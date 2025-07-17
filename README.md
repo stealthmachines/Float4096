@@ -9,7 +9,7 @@ SINGLE COMMAND (assuming local setup):
  ```bash
 pip install git+https://github.com/ZCHGorg/base4096.git && pip install -r requirements.txt && cd float4096 && pip install . && cd ..
 
-Manual Installtion:
+Manual Installation:
 1. **Set Up a Virtual Environment** (recommended to isolate dependencies):
 
    ```bash
