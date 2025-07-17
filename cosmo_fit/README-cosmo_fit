@@ -2,11 +2,12 @@ The sample script exhibits a good use case for Float4096.  This script is design
 
 After ensuring all prerequisites are installed, run cosmo_fit.py using python.
 
-
+``` bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-
+The requirements file is located in the main folder, if you see this it's because you skipped passed our readme!
+``` bash
 pip install -r requirements.txt
 
 
