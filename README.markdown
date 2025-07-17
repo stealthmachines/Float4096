@@ -125,4 +125,4 @@ Float4096/
 ```
 
 ## License
-MIT License
+zchg.org License(https://zchg.org/t/legal-notice-copyright-applicable-ip-and-licensing-read-me/440)
