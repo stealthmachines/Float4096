@@ -2,19 +2,17 @@ The sample script exhibits a good use case for Float4096.  This script is design
 
 After ensuring all prerequisites are installed, run cosmo_fit.py using python.
 
- ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
- ```bash
+This is how you run the actual script:
 py cosmo_fit.py
 
 The requirements file is located in the main folder, if you see this it's because you skipped passed our readme!
 
- ```bash
 pip install -r requirements.txt
 
 
-# Note: If base4096 is not available on PyPI, install it from source:
- ```bash
+Note: If base4096 is not available installed, install it from source:
+
 pip install git+https://github.com/ZCHGorg/base4096.git
