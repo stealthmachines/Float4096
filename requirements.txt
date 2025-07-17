@@ -4,6 +4,8 @@ scipy>=1.7.0
 matplotlib>=3.4.0
 tqdm>=4.60.0
 joblib>=1.0.0
+sympy>=1.9
+# Note: If base4096 is not on PyPI, install it from source:
+pip install git+https://github.com/ZCHGorg/base4096.git
 base4096
-# Note: If base4096 is not available on PyPI, install it from source:
-# pip install git+https://github.com/ZCHGorg/base4096.git
+
