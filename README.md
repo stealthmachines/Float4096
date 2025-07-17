@@ -28,7 +28,7 @@ A high-precision floating-point arithmetic library using native base4096 represe
    scipy>=1.7.0
    base4096
    # Note: latest base4096 is not on PyPI, install it for now from source:
-pip install git+https://github.com/ZCHGorg/base4096.git
+   pip install git+https://github.com/ZCHGorg/base4096.git
    ```
    Install dependencies:
    ```bash
