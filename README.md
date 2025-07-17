@@ -10,7 +10,7 @@ cd base4096
 pip install .
 
 Clone the repository:
-git clone https://github.com/ZCHGorg/float4096.git
+git clone https://github.com/stealthmachines/float4096.git
 cd float4096
 
 Install dependencies:
