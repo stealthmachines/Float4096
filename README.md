@@ -96,4 +96,4 @@ float4096/
 Contributing
 Contributions are welcome! Please submit a pull request or open an issue on GitHub.
 License
-[ZCHG.org](https://zchg.org/t/legal-notice-copyright-applicable-ip-and-licensing-read-me/440)
+https://zchg.org/t/legal-notice-copyright-applicable-ip-and-licensing-read-me/440
