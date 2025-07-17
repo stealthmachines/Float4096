@@ -1,0 +1,5 @@
+The sample script exhibits a good use case for Float4096.  This script is designed to find a close approximation of known constants, both in the macro and the micro.  It will then graph them.  If everything is working correctly, this script should complete in about 5-6 hours on a typical machine.
+
+After ensuring all prerequisites are installed e.g. by running the requirements.txt, run the following:
+
+py cosmo_fit.py
