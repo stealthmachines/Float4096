@@ -6,6 +6,8 @@ import sympy as sp
 from sympy import zeta, exp as sympy_exp, I, pi, conjugate, Rational
 from scipy.optimize import root_scalar
 from collections import OrderedDict
+import pickle
+import os
 
 # Constants
 BASE = 4096
@@ -62,8 +64,15 @@ def native_prime_product(n: int) -> 'Float4096':
     return product
 
 def prepare_prime_interpolation(primes_list=PRIMES):
-    indices = [float(i + 1) for i in range(len(primes_list))]
-    recursive_index_phi = [float(log(Float4096(i + 1)) / log(phi)) for i in indices]
+    cache_file = "prime_interp_cache.pkl"
+    if os.path.exists(cache_file):
+        with open(cache_file, "rb") as f:
+            recursive_index_phi = pickle.load(f)
+    else:
+        indices = [float(i + 1) for i in range(len(primes_list))]
+        recursive_index_phi = [float(log(Float4096(i + 1)) / log(phi)) for i in indices]
+        with open(cache_file, "wb") as f:
+            pickle.dump(recursive_index_phi, f)
     return lambda x: native_cubic_spline(x, recursive_index_phi, primes_list)
 
 def fib_real(n: 'Float4096') -> 'Float4096':
@@ -208,14 +217,17 @@ class Float4096:
         if value == 0:
             return [0] * DIGITS_PER_NUMBER
         value = math.fabs(value)
-        exponent = int(math.floor(math.log(value, BASE))) if value != 0 else 0
+        exponent = int(math.floor(math.log(value, BASE))) if value >= 1 else 0  # Use 0 for values < 1
         self.exponent = exponent
         mantissa = value / (BASE ** exponent)
         digits = []
         for _ in range(DIGITS_PER_NUMBER):
-            digit = int(mantissa * BASE)
-            digits.append(digit)
-            mantissa = (mantissa * BASE) - digit
+            if mantissa < 1e-10:  # Prevent precision loss
+                digits.append(0)
+            else:
+                digit = int(mantissa)  # Take integer part directly
+                digits.append(min(digit, BASE - 1))  # Ensure digits in [0, BASE-1]
+                mantissa = (mantissa - digit) * BASE  # Update mantissa correctly
         return digits
 
     def _from_base4096_str(self, b4096_str: str) -> List[int]:
@@ -231,10 +243,13 @@ class Float4096:
         return self.sign * result
 
     def normalize(self):
-        while self.digits and self.digits[0] == 0:
+        # Remove leading zeros
+        while len(self.digits) > 1 and self.digits[0] == 0:
             self.digits.pop(0)
             self.exponent -= 1
+        # Pad digits to DIGITS_PER_NUMBER
         self.digits = self.digits[:DIGITS_PER_NUMBER] + [0] * (DIGITS_PER_NUMBER - len(self.digits))
+        # Handle zero case
         if all(d == 0 for d in self.digits):
             self.sign = 1
             self.exponent = 0
