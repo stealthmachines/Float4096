@@ -135,7 +135,7 @@ Float4096/
 └── README.md
 ```
 
-## Reinstall or Upgrade to Latest
+## Reinstall or Upgrade to Latest (Warning: Nuclear)
 ```
  pip install --force-reinstall git+https://github.com/stealthmachines/Float4096.git
 ```
@@ -143,7 +143,7 @@ Float4096/
 ## Uninstall
 
 1. Single-Line Uninstall Command
-This command removes the float4096 package, deactivates and deletes the virtual environment, and optionally removes the cloned repository directory. It assumes the user is in the Float4096 directory after running the Git clone command.
+This command removes the float4096 package and optionally removes the cloned repository directory. It assumes the user is in the Float4096 directory after running the Git clone command.  Consult 'breakdown' for environment removal and other options.
 
 Linux/macOS (Bash/Zsh):
 ```
