@@ -13,7 +13,7 @@ setup(
         'matplotlib>=3.4.0',
         'tqdm>=4.60.0',
         'joblib>=1.0.0',
-        'base4096 @ git+https://github.com/ZCHGorg/base4096.git',
+        'base4096 @ git+https://github.com/ZCHGorg/base4096module.git',
         'pyfftw>=0.13.0',  # Optional, but include for consistency
     ],
     author='Josef Kulovany',
