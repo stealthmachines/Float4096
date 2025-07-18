@@ -9,6 +9,7 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import sympy as sp
 from scipy.optimize import minimize, differential_evolution
 from scipy.interpolate import interp1d
 from float4096 import (
