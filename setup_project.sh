@@ -1,92 +1,93 @@
-#!/bin/sh
-# project_root/setup_project.sh
+# project_root/setup_project.ps1
+$ErrorActionPreference = "Stop"
 
-# Exit on any error
-set -e
+# Determine project root
+$PROJECT_ROOT = Get-Location
 
-# Determine project root (works across shells and OS)
-PROJECT_ROOT=$(pwd)
-
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
+# Check for Git
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Error "Git not found. Please install Git."
+    exit 1
 }
 
 # Check for Python 3.8 or higher
-PYTHON="python3"
-if ! command_exists "$PYTHON"; then
-    PYTHON="python"
-    if ! command_exists "$PYTHON"; then
-        echo "Error: Python not found. Please install Python 3.8 or higher."
-        exit 1
-    fi
-fi
-
-PYTHON_VERSION=$($PYTHON --version | grep -o '[0-9]\.[0-9]' | head -1)
-if [ "$(echo "$PYTHON_VERSION < 3.8" | bc)" -eq 1 ]; then
-    echo "Error: Python 3.8 or higher required. Found version: $PYTHON_VERSION"
+$PYTHON = "python"
+if (-not (Get-Command $PYTHON -ErrorAction SilentlyContinue)) {
+    Write-Error "Python not found. Please install Python 3.8 or higher."
     exit 1
-fi
+}
+
+$PYTHON_VERSION = & $PYTHON --version | Select-String -Pattern "[0-9]\.[0-9]" | ForEach-Object { $_.Matches.Value }
+if ([version]$PYTHON_VERSION -lt [version]"3.8") {
+    Write-Error "Python 3.8 or higher required. Found version: $PYTHON_VERSION"
+    exit 1
+}
+
+# Check for pip
+if (-not (Get-Command pip -ErrorAction SilentlyContinue)) {
+    Write-Error "pip not found. Please install pip for Python 3."
+    exit 1
+}
 
 # Create and activate virtual environment
-VENV_DIR="$PROJECT_ROOT/venv"
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating virtual environment in $VENV_DIR..."
-    $PYTHON -m venv "$VENV_DIR"
-fi
+$VENV_DIR = Join-Path $PROJECT_ROOT "venv"
+if (-not (Test-Path $VENV_DIR)) {
+    Write-Host "Creating virtual environment in $VENV_DIR..."
+    & $PYTHON -m venv $VENV_DIR
+}
 
-# Activate virtual environment (cross-platform)
-if [ "$(uname)" = "Darwin" ] || [ "$(uname)" = "Linux" ]; then
-    . "$VENV_DIR/bin/activate"
-elif [ "$(expr substr $(uname -s) 1 5)" = "MINGW" ] || [ "$(expr substr $(uname -s) 1 10)" = "MSYS" ]; then
-    . "$VENV_DIR/Scripts/activate"
-else
-    echo "Error: Unsupported operating system."
+# Activate virtual environment
+$ACTIVATE_SCRIPT = Join-Path $VENV_DIR "Scripts\Activate.ps1"
+if (Test-Path $ACTIVATE_SCRIPT) {
+    . $ACTIVATE_SCRIPT
+} else {
+    Write-Error "Failed to activate virtual environment."
     exit 1
-fi
+}
 
 # Set PYTHONPATH
-export PYTHONPATH="$PYTHONPATH:$PROJECT_ROOT"
-echo "Set PYTHONPATH to include $PROJECT_ROOT"
+$env:PYTHONPATH = "$env:PYTHONPATH;$PROJECT_ROOT"
+Write-Host "Set PYTHONPATH to include $PROJECT_ROOT"
 
 # Install dependencies
-echo "Installing dependencies from requirements.txt..."
+Write-Host "Installing dependencies from requirements.txt..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
 # Install float4096 package
-echo "Installing float4096 package..."
+Write-Host "Installing float4096 package..."
 pip install .
 
 # Function to run tests
-run_tests() {
-    echo "Running tests..."
+function Run-Tests {
+    Write-Host "Running tests..."
+    if (-not (Test-Path "tests/test_float4096.py")) {
+        Write-Error "tests/test_float4096.py not found."
+        exit 1
+    }
     pytest tests/test_float4096.py -v
 }
 
 # Function to run cosmo_fit.py
-run_cosmo_fit() {
-    echo "Running cosmo_fit.py..."
+function Run-CosmoFit {
+    Write-Host "Running cosmo_fit.py..."
+    if (-not (Test-Path "cosmo_fit/cosmo_fit.py")) {
+        Write-Error "cosmo_fit/cosmo_fit.py not found."
+        exit 1
+    }
     python cosmo_fit/cosmo_fit.py
 }
 
 # Parse command-line arguments
-case "$1" in
-    test)
-        run_tests
-        ;;
-    cosmo)
-        run_cosmo_fit
-        ;;
-    both)
-        run_tests
-        run_cosmo_fit
-        ;;
-    *)
-        echo "Usage: $0 {test|cosmo|both}"
-        echo "  test: Run tests only"
-        echo "  cosmo: Run cosmo_fit.py only"
-        echo "  both: Run tests and cosmo_fit.py"
+switch ($args[0]) {
+    "test" { Run-Tests }
+    "cosmo" { Run-CosmoFit }
+    "both" { Run-Tests; Run-CosmoFit }
+    default {
+        Write-Host "Usage: .\setup_project.ps1 {test|cosmo|both}"
+        Write-Host "  test: Run tests only"
+        Write-Host "  cosmo: Run cosmo_fit.py only"
+        Write-Host "  both: Run tests and cosmo_fit.py"
         exit 1
-        ;;
-esac
+    }
+}
