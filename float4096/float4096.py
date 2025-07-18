@@ -1,3 +1,4 @@
+# float4096/__init__.py
 import math
 from typing import List, Tuple, Union, Dict
 import numpy as np
