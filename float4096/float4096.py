@@ -766,7 +766,7 @@ def apply_operator(op, x: 'Float4096', n: int, s=None, prime_interp=None) -> 'Co
         result = op(result.real, s, prime_interp) if op in (Spin, Splice, Reflect) else op(result.real)
     return result
 
-def M_O(n: ns: 'Float4096', x: 'Float4096', O, s=None, prime_interp=None) -> 'ComplexFloat4096':
+def M_O(n: 'Float4096', x: 'Float4096', O, s=None, prime_interp=None) -> 'ComplexFloat4096':
     return apply_operator(O, x, int(float(n)), s, prime_interp)
 
 def Coil_n(x: 'Float4096', n: int) -> 'ComplexFloat4096':
