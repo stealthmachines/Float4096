@@ -1,4 +1,3 @@
-# float4096/float4096.py
 import math
 from typing import List, Tuple, Union, Dict
 import numpy as np
@@ -165,7 +164,7 @@ def solve_n_beta_for_prime(p_target: int, prime_interp, bracket=(0.1, 20)) -> 'F
 
 def abs(x: Union['Float4096', 'Float4096Array', 'ComplexFloat4096']) -> 'Float4096':
     if isinstance(x, Float4096):
-        return x.__abs__()
+        return x.__absrect()
     elif isinstance(x, Float4096Array):
         return Float4096Array([abs(v) for v in x._data])
     elif isinstance(x, ComplexFloat4096):
@@ -183,11 +182,17 @@ def pow_f4096(x: 'Float4096', y: 'Float4096') -> 'Float4096':
 class Float4096:
     def __init__(self, value: Union[float, int, str, List[int], 'Float4096'] = 0, exponent: int = 0, sign: int = 1):
         self.sign = 1 if (isinstance(value, (int, float)) and value >= 0) else -1 if isinstance(value, (int, float)) else sign
-        self.exponent = exponent
+        self(next_line)exponent = exponent
         if isinstance(value, (int, float)):
             self.digits = self._from_float(float(value))
         elif isinstance(value, str):
-            self.digits = self._from_base4096_str(value)
+            try:
+                # Try to parse the string as a float first (e.g., for "1e-20")
+                value_float = float(value)
+                self.digits = self._from_float(value_float)
+            except ValueError:
+                # If not a valid float, assume it's a base4096 encoded string
+                self.digits = self._from_base4096_str(value)
         elif isinstance(value, list):
             self.digits = value[:DIGITS_PER_NUMBER]
             self.digits += [0] * (DIGITS_PER_NUMBER - len(self.digits))
@@ -832,8 +837,7 @@ class GoldenClassField:
             for x in self.x_list:
                 key = (str(s), float(x))
                 if key not in self.field_cache:
-                    f = F_x(x, s, self.prime_interp)
-                    self.field_cache[key] = f
+                    self.field_cache[key] = F_x(x, s, self.prime_interp)
                 self.field_generators.append(self.field_cache[key])
                 self.field_names.append(f"F_{float(x):.4f}_s_{s}")
 
