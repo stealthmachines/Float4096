@@ -141,12 +141,12 @@ This command removes the float4096 package, deactivates and deletes the virtual 
 Linux/macOS (Bash/Zsh):
 ```
 cd Float4096 && [ -d venv ] && . venv/bin/activate && pip uninstall -y float4096 && deactivate && rm -rf venv && cd .. && rm -rf Float4096
+```
 Windows (Git Bash/WSL):
 ```
-```
 cd Float4096 && [ -d venv ] && . venv/Scripts/activate && pip uninstall -y float4096 && deactivate && rm -rf venv && cd .. && rm -rf Float4096
-Windows (PowerShell):
 ```
+Windows (PowerShell):
 ```
 cd Float4096; if (Test-Path venv) { . .\venv\Scripts\Activate.ps1; pip uninstall -y float4096; deactivate; Remove-Item -Recurse -Force venv }; cd ..; Remove-Item -Recurse -Force Float4096
 ```
