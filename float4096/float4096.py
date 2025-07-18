@@ -221,6 +221,9 @@ class Float4096:
         else:
             raise ValueError("Invalid input for Float4096")
         self.normalize()
+        
+    def __neg__(self) -> 'Float4096':
+            return Float4096(self.digits, self.exponent, -self.sign)
 
     def _from_float(self, value: float) -> List[int]:
         if value == 0:
