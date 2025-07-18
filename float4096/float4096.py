@@ -182,7 +182,7 @@ def pow_f4096(x: 'Float4096', y: 'Float4096') -> 'Float4096':
 class Float4096:
     def __init__(self, value: Union[float, int, str, List[int], 'Float4096'] = 0, exponent: int = 0, sign: int = 1):
         self.sign = 1 if (isinstance(value, (int, float)) and value >= 0) else -1 if isinstance(value, (int, float)) else sign
-        self(next_line)exponent = exponent
+        self.exponent = exponent
         if isinstance(value, (int, float)):
             self.digits = self._from_float(float(value))
         elif isinstance(value, str):
