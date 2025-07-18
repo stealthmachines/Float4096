@@ -7,6 +7,14 @@ A high-precision floating-point arithmetic library using native base4096 represe
 `float4096` provides `Float4096` for scalar arithmetic (~768-bit precision), `ComplexFloat4096` for complex number operations, `Float4096Array` for vectorized operations, `GRAElement` for emergent constants, and `GoldenClassField` for field computations. It features native FFT-based multiplication, full cubic spline interpolation, and complex arithmetic, minimizing `sympy` and `numpy` overhead. Optimized for `cosmo_fit.py`.
 
 ## Installation
+```bash
+git clone https://github.com/stealthmachines/Float4096.git
+cd Float4096
+chmod +x setup_project.sh
+./setup_project.sh both
+
+
+## Or manually, if you prefer - 
 
 1. **Clone the Repository**:
    ```bash
