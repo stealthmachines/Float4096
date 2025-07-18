@@ -20,12 +20,21 @@ EPSILON = Float4096("1e-20")
 PRIME_INTERP = prepare_prime_interpolation()
 PI = pi_val()
 
+@pytest.fixture(autouse=True)
+def setup_globals():
+    from float4096 import phi, sqrt5, pi_val, k, r
+    global phi, sqrt5, pi_val, k, r
+    phi = Float4096((1 + sqrt(Float4096(5))) / 2)
+    sqrt5 = sqrt(Float4096(5))
+    pi_val = Float4096(math.pi)
+    k = Float4096(-1)
+    r = Float4096(1)
+
 @pytest.fixture
 def prime_interp():
     return PRIME_INTERP
 
-def test_cosmo_fit_integration():
-    prime_interp = prepare_prime_interpolation()
+def test_cosmo_fit_integration(prime_interp):
     n, beta = Float4096(2), Float4096(0.5)
     val = D(n, beta, prime_interp=prime_interp)
     assert val.is_finite()
@@ -34,7 +43,6 @@ def test_cosmo_fit_integration():
     assert n_est is not None
     assert abs(float(n_est) - float(n)) < 1e-5
 
-# Test Float4096 arithmetic
 def test_float4096_arithmetic():
     a = Float4096(2.5)
     b = Float4096(1.5)
@@ -58,6 +66,8 @@ def test_float4096_arithmetic():
     assert Float4096(0) + Float4096(0) == Float4096(0)
     with pytest.raises(ValueError, match="Division by zero"):
         a / Float4096(0)
+    with pytest.raises(ValueError, match="Division by near-zero value"):
+        a / Float4096("1e-50")
 
 def test_float4096_comparison():
     a = Float4096(2.5)
@@ -77,7 +87,6 @@ def test_float4096_conversion():
     assert str(a).startswith("Float4096(2.5")
     assert repr(a).startswith("Float4096(digits=")
 
-# Test ComplexFloat4096
 def test_complexfloat4096_arithmetic():
     z1 = ComplexFloat4096(Float4096(1), Float4096(2))
     z2 = ComplexFloat4096(Float4096(3), Float4096(4))
@@ -86,11 +95,9 @@ def test_complexfloat4096_arithmetic():
     assert abs((z1 + z2).real - Float4096(4)) < EPSILON
     assert abs((z1 + z2).imag - Float4096(6)) < EPSILON
     # Multiplication
-    # (1 + 2i)(3 + 4i) = 3 + 4i + 6i + 8i^2 = 3 + 4i + 6i - 8 = -5 + 10i
     assert abs((z1 * z2).real - Float4096(-5)) < EPSILON
     assert abs((z1 * z2).imag - Float4096(10)) < EPSILON
     # Division
-    # (1 + 2i)/(3 + 4i) = (1 + 2i)(3 - 4i)/(9 + 16) = (3 - 4i + 6i - 8i^2)/(25) = (11 - 2i)/25
     result = z1 / z2
     assert abs(result.real - Float4096(11/25)) < EPSILON
     assert abs(result.imag - Float4096(-2/25)) < EPSILON
@@ -102,8 +109,10 @@ def test_complexfloat4096_arithmetic():
     z_exp = z1.exp()
     assert abs(z_exp.real - Float4096(math.exp(1) * math.cos(2))) < EPSILON
     assert abs(z_exp.imag - Float4096(math.exp(1) * math.sin(2))) < EPSILON
+    # Near-zero division
+    with pytest.raises(ValueError, match="Division by near-zero complex magnitude"):
+        z1 / ComplexFloat4096(Float4096("1e-50"), Float4096("1e-50"))
 
-# Test Float4096Array
 def test_float4096array_operations():
     arr = Float4096Array([1, 2, 3])
     assert len(arr) == 3
@@ -122,8 +131,18 @@ def test_float4096array_operations():
     # Mean and stddev
     assert abs(mean(arr) - Float4096(2)) < EPSILON
     assert abs(stddev(arr) - Float4096(np.std([1, 2, 3], ddof=1))) < EPSILON
+    # Abs and max
+    assert abs(arr).is_finite()
+    assert abs(max(arr) - Float4096(3)) < EPSILON
 
-# Test special functions
+def test_float4096array_edge_cases():
+    empty_arr = Float4096Array([])
+    with pytest.raises(ZeroDivisionError):
+        mean(empty_arr)
+    single_arr = Float4096Array([1])
+    assert mean(single_arr) == Float4096(1)
+    assert stddev(single_arr) == Float4096(0)
+
 def test_special_functions():
     x = Float4096(1.0)
     
@@ -145,7 +164,6 @@ def test_special_functions():
     with pytest.raises(ValueError, match="Square root of negative number"):
         sqrt(Float4096(-1))
 
-# Test prime-related functions
 def test_prime_functions(prime_interp):
     # Prime product
     assert abs(float(native_prime_product(3)) - (2 * 3 * 5)) < 1e-15
@@ -160,15 +178,15 @@ def test_prime_functions(prime_interp):
     n_beta = solve_n_beta_for_prime(p_target, prime_interp)
     assert abs(P_nb(n_beta, prime_interp) - Float4096(p_target)) < EPSILON
 
-# Test cubic spline
 def test_cubic_spline():
     x_points = [0.0, 1.0, 2.0, 3.0]
     y_points = [0.0, 1.0, 4.0, 9.0]
     x = 1.5
     result = native_cubic_spline(x, x_points, y_points)
-    assert abs(result - 2.25) < 1e-10  # Expected: quadratic interpolation x^2 at x=1.5
+    assert abs(result - 2.25) < 1e-10
+    result_edge = native_cubic_spline(4.0, x_points, y_points)
+    assert abs(result_edge - 9.0) < 1e-10
 
-# Test GRAElement
 def test_gra_element(prime_interp):
     gra = GRAElement(Float4096(2), prime_interp=prime_interp)
     assert gra._value.is_finite()
@@ -185,8 +203,11 @@ def test_gra_element(prime_interp):
     assert abs(gra_sum - sqrt(gra._value ** 2 + gra2._value ** 2)) < EPSILON
     gra_mult = gra2.gra_multiply(gra)
     assert abs(gra_mult._value - gra2._value) < EPSILON
+    
+    # Large n
+    gra_large = GRAElement(Float4096(1500), prime_interp=prime_interp)
+    assert gra_large._value == Float4096(0)
 
-# Test field computations
 def test_field_computations(prime_interp):
     n = Float4096(2)
     beta = Float4096(0.5)
@@ -207,7 +228,21 @@ def test_field_computations(prime_interp):
     if n_est is not None:
         assert abs(D(n_est, beta_est, r=r_est, k=k_est, scale=scale_est, prime_interp=prime_interp) - val) < Float4096("1e-10") * val
 
-# Test meta-operators
+def test_field_automorphisms_and_tension(prime_interp):
+    x = Float4096(1)
+    s = sp.Rational(1, 2)
+    F_val = F_x(x, s, prime_interp)
+    autos = field_automorphisms(F_val, x, s, prime_interp)
+    assert abs(autos["F_x(s)"] - F_val) < EPSILON
+    assert abs(autos["F_x(1-s)"] - Splice(x, s, prime_interp)) < EPSILON
+    assert abs(autos["F_-x(s)"] - Reflect(x, s, prime_interp)) < EPSILON
+    assert abs(autos["conjugate(F)"] - F_val.conjugate()) < EPSILON
+    
+    C_val = Float4096(1)
+    m_val = Float4096(1)
+    tension = field_tension(F_val, C_val, m_val, s)
+    assert tension.is_finite()
+
 def test_meta_operators(prime_interp):
     x = Float4096(1)
     s = sp.Rational(1, 2)
@@ -228,7 +263,6 @@ def test_meta_operators(prime_interp):
     spin_n = Spin_n(x, 2, s, prime_interp)
     assert abs(spin_n - Spin(Spin(x, s, prime_interp).real, s, prime_interp)) < EPSILON
 
-# Test morphing scale wrappers
 def test_morphing_scale_wrappers():
     n = Float4096(2)
     m_val = Float4096(1)
@@ -243,7 +277,6 @@ def test_morphing_scale_wrappers():
     assert abs(output["Force F"] - force(n, m_val)) < EPSILON
     assert abs(output["Voltage V"] - voltage(n, m_val)) < EPSILON
 
-# Test GoldenClassField
 def test_golden_class_field(prime_interp):
     s_list = [sp.Rational(1, 2), sp.Rational(1, 3)]
     x_list = [Float4096(1), Float4096(2)]
@@ -263,7 +296,6 @@ def test_golden_class_field(prime_interp):
             prod = field.field_cache[key1] * field.field_cache[key2]
             assert prod.is_finite()
 
-# Test differential operators and manifold mappings
 def test_differential_operators(prime_interp):
     n = Float4096(2)
     
@@ -297,7 +329,6 @@ def test_differential_operators(prime_interp):
     assert r_n.is_finite() and tau_n == Float4096(1)
     assert edge_weight(n, prime_interp).is_finite()
 
-# Test linspace and logspace
 def test_linspace_logspace():
     start = Float4096(0)
     stop = Float4096(10)
@@ -312,11 +343,18 @@ def test_linspace_logspace():
     assert abs(log10(lgs[0]) - Float4096(0)) < EPSILON
     assert abs(log10(lgs[-1]) - Float4096(1)) < EPSILON
 
-# Performance benchmark (optional, for reference)
+def test_cache_management():
+    from float4096 import fib_cache, cache_set
+    for i in range(15000):
+        cache_set(fib_cache, i, Float4096(i))
+    assert len(fib_cache) <= 10000
+    assert 14000 in fib_cache
+    assert 0 not in fib_cache
+
 def test_performance_fft_multiply(benchmark):
     a = Float4096(123456789.123456789)
     b = Float4096(987654321.987654321)
-    result = benchmark(lambda: a * b)
+    result = benchmark.pedantic(lambda: a.fft_multiply(b), rounds=10)
     assert result.is_finite()
 
 if __name__ == "__main__":
