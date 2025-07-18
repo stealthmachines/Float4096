@@ -8,7 +8,7 @@ setup(
         'numpy>=1.20.0',
         'sympy>=1.9',
         'scipy>=1.7.0',
-        'base4096',  # Ensure this is pip-installable or bundled
+        'base4096 @ git+https://github.com/ZCHGorg/base4096.git',
     ],
     author='Josef Kulovany',
     author_email='stealthmachines@gmail.com',
