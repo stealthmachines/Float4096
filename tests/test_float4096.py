@@ -1,19 +1,73 @@
+# tests/test_float4096.py
+import pytest
+import numpy as np
+import sympy as sp
+import math
+from numbers import Number
 import pytest
 import numpy as np
 import sympy as sp
 from float4096 import (
-    Float4096, ComplexFloat4096, Float4096Array, GRAElement, GoldenClassField,
-    sqrt, exp, log, log10, sin, cos, pi_val, linspace, logspace, mean, stddev,
-    D, D_x, F_x, invert_D, ds_squared, g9, R9, grad9_r_n, Gamma_n, D_n,
-    T, Xi_n, psi_9, E_n, edge_weight, Coil, Spin, Splice, Reflect,
-    Coil_n, Spin_n, Splice_n, Reflect_n, recursive_time, frequency, charge,
-    field_yield, action, energy, force, voltage, labeled_output,
-    field_automorphisms, field_tension, prepare_prime_interpolation,
-    native_zeta, native_prime_product, compute_spline_coefficients,
-    native_cubic_spline, P_nb, solve_n_beta_for_prime
+    Float4096,
+    Float4096Array,
+    ComplexFloat4096,
+    GRAElement,
+    GoldenClassField,
+    sqrt,
+    exp,
+    log,
+    log10,
+    sin,
+    cos,
+    pi_val,
+    linspace,
+    logspace,
+    mean,
+    stddev,
+    abs,
+    max,
+    D,
+    D_x,
+    F_x,
+    invert_D,
+    ds_squared,
+    g9,
+    R9,
+    grad9_r_n,
+    Gamma_n,
+    D_n,
+    T,
+    Xi_n,
+    psi_9,
+    E_n,
+    edge_weight,
+    Coil,
+    Spin,
+    Splice,
+    Reflect,
+    Coil_n,
+    Spin_n,
+    Splice_n,
+    Reflect_n,
+    recursive_time,
+    frequency,
+    charge,
+    field_yield,
+    action,
+    energy,
+    force,
+    voltage,
+    labeled_output,
+    field_automorphisms,
+    field_tension,
+    prepare_prime_interpolation,
+    native_zeta,
+    native_prime_product,
+    compute_spline_coefficients,
+    native_cubic_spline,
+    P_nb,
+    solve_n_beta_for_prime,
 )
-import math
-from numbers import Number
 
 # Constants for testing
 EPSILON = Float4096("1e-20")
