@@ -164,6 +164,34 @@ cd Float4096: Navigates to the project directory.
 [ -d venv ] && . venv/bin/activate (or if (Test-Path venv) { . .\venv\Scripts\Activate.ps1 }): Activates the virtual environment if it exists.
 pip uninstall -y float4096: Uninstalls the float4096 package without prompting.
 deactivate: Deactivates the virtual environment.
+
+
+# Speaking of Environments..
+
+(Replace Owner with your username)
+
+Steps to Diagnose Environment Crash
+If you disable environment creation due to crashes, try recreating my-env manually:
+
+Delete Existing my-env:
+```
+Remove-Item -Recurse -Force C:\Users\Owner\Documents\Float4096\my-env
+```
+Create New Virtual Environment:
+```
+python -m venv C:\Users\Owner\Documents\Float4096\my-env
+```
+Activate and Upgrade pip:
+```
+C:\Users\Owner\Documents\float4096\Float4096\my-env\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+```
+Install Dependencies:
+```
+pip install numpy>=1.21.0 sympy>=1.8 scipy>=1.7.0 pandas>=1.3.0 matplotlib>=3.4.0 tqdm>=4.60.0 joblib>=1.0.0 pyfftw>=0.13.0 pytest
+pip install git+https://github.com/ZCHGorg/base4096module.git
+```
+More:
 rm -rf venv (or Remove-Item -Recurse -Force venv): Deletes the virtual environment.
 cd .. && rm -rf Float4096 (or cd ..; Remove-Item -Recurse -Force Float4096): Moves up one directory and deletes the cloned repository.
 
