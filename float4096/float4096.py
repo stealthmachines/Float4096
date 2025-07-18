@@ -164,7 +164,7 @@ def solve_n_beta_for_prime(p_target: int, prime_interp, bracket=(0.1, 20)) -> 'F
 
 def abs(x: Union['Float4096', 'Float4096Array', 'ComplexFloat4096']) -> 'Float4096':
     if isinstance(x, Float4096):
-        return x.__abs__()  # Corrected: Call __abs__ instead of __absrect
+        return x.__abs__()  # Corrected from __absrect to __abs__
     elif isinstance(x, Float4096Array):
         return Float4096Array([abs(v) for v in x._data])
     elif isinstance(x, ComplexFloat4096):
