@@ -1,4 +1,4 @@
-# float4096/__init__.py
+# float4096/float4096.py
 import math
 from typing import List, Tuple, Union, Dict
 import numpy as np
@@ -170,7 +170,7 @@ def abs(x: Union['Float4096', 'Float4096Array', 'ComplexFloat4096']) -> 'Float40
         return Float4096Array([abs(v) for v in x._data])
     elif isinstance(x, ComplexFloat4096):
         return x.abs()
-    return Float4096(math.fabs(float(x)))
+    return Float4096(math.fabs(float(x)) if isinstance(x, (int, float)) else float(x))
 
 def max(x: 'Float4096Array', y: Union['Float4096', Number] = None) -> 'Float4096':
     if y is None:
@@ -182,7 +182,7 @@ def pow_f4096(x: 'Float4096', y: 'Float4096') -> 'Float4096':
 
 class Float4096:
     def __init__(self, value: Union[float, int, str, List[int], 'Float4096'] = 0, exponent: int = 0, sign: int = 1):
-        self.sign = 1 if value >= 0 else -1 if isinstance(value, (int, float)) else sign
+        self.sign = 1 if (isinstance(value, (int, float)) and value >= 0) else -1 if isinstance(value, (int, float)) else sign
         self.exponent = exponent
         if isinstance(value, (int, float)):
             self.digits = self._from_float(float(value))
@@ -202,7 +202,7 @@ class Float4096:
     def _from_float(self, value: float) -> List[int]:
         if value == 0:
             return [0] * DIGITS_PER_NUMBER
-        value = abs(value)
+        value = math.fabs(value)
         exponent = int(math.floor(math.log(value, BASE))) if value != 0 else 0
         self.exponent = exponent
         mantissa = value / (BASE ** exponent)
@@ -766,7 +766,7 @@ def apply_operator(op, x: 'Float4096', n: int, s=None, prime_interp=None) -> 'Co
         result = op(result.real, s, prime_interp) if op in (Spin, Splice, Reflect) else op(result.real)
     return result
 
-def M_O(n: 'Float4096', x: 'Float4096', O, s=None, prime_interp=None) -> 'ComplexFloat4096':
+def M_O(n: ns: 'Float4096', x: 'Float4096', O, s=None, prime_interp=None) -> 'ComplexFloat4096':
     return apply_operator(O, x, int(float(n)), s, prime_interp)
 
 def Coil_n(x: 'Float4096', n: int) -> 'ComplexFloat4096':
@@ -874,8 +874,8 @@ def field_tension(F_val: 'ComplexFloat4096', C_val, m_val: 'Float4096', s_val) -
     return Float4096(float((F_val.abs() * m_val * Float4096(float(s_val))) / (C_val**2)))
 
 # Initialize constants
-phi = Float4096((1 + sqrt(Float4096(5))) / 2)
-sqrt5 = sqrt(Float4096(5))
+phi = Float4096((1 + math.sqrt(5)) / 2)
+sqrt5 = Float4096(math.sqrt(5))
 pi_val = Float4096(math.pi)
 k = Float4096(-1)
 r = Float4096(1)
