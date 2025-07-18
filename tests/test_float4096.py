@@ -4,10 +4,8 @@ import numpy as np
 import sympy as sp
 import math
 from numbers import Number
-import pytest
-import numpy as np
-import sympy as sp
 from float4096 import (
+    fib_real,
     Float4096,
     Float4096Array,
     ComplexFloat4096,
@@ -71,22 +69,25 @@ from float4096 import (
 
 # Constants for testing
 EPSILON = Float4096("1e-20")
-PRIME_INTERP = prepare_prime_interpolation()
+@pytest.fixture(scope="module")
+def prime_interp():
+    return prepare_prime_interpolation()
+
 PI = pi_val()
 
-@pytest.fixture(autouse=True)
-def setup_globals():
-    from float4096 import phi, sqrt5, pi_val, k, r
-    global phi, sqrt5, pi_val, k, r
-    phi = Float4096((1 + sqrt(Float4096(5))) / 2)
-    sqrt5 = sqrt(Float4096(5))
-    pi_val = Float4096(math.pi)
-    k = Float4096(-1)
-    r = Float4096(1)
+# @pytest.fixture(autouse=True)
+# def setup_globals():
+#    from float4096 import phi, sqrt5, pi_val, k, r
+#    global phi, sqrt5, pi_val, k, r
+#    phi = Float4096((1 + sqrt(Float4096(5))) / 2)
+#    sqrt5 = sqrt(Float4096(5))
+#    pi_val = Float4096(math.pi)
+#    k = Float4096(-1)
+#    r = Float4096(1)
 
-@pytest.fixture
-def prime_interp():
-    return PRIME_INTERP
+# @pytest.fixture
+# def prime_interp():
+#    return PRIME_INTERP
 
 def test_cosmo_fit_integration(prime_interp):
     n, beta = Float4096(2), Float4096(0.5)
@@ -397,8 +398,8 @@ def test_linspace_logspace():
     assert abs(log10(lgs[0]) - Float4096(0)) < EPSILON
     assert abs(log10(lgs[-1]) - Float4096(1)) < EPSILON
 
+@pytest.mark.slow
 def test_cache_management():
-    from float4096 import fib_cache, cache_set
     for i in range(15000):
         cache_set(fib_cache, i, Float4096(i))
     assert len(fib_cache) <= 10000
