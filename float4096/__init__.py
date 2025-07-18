@@ -1,4 +1,5 @@
 # float4096/__init__.py
+
 from .float4096 import (
     Float4096,
     Float4096Array,
@@ -59,4 +60,9 @@ from .float4096 import (
     native_cubic_spline,
     P_nb,
     solve_n_beta_for_prime,
+    # Constants added below:
+    phi,
+    sqrt5,
+    k,
+    r
 )
