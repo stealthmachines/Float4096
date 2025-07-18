@@ -1,4 +1,4 @@
-# float4096
+# Float4096
 
 A high-precision floating-point arithmetic library using native base4096 representation, optimized for Golden Recursive Algebra (GRA) and field-theoretic computations in `cosmo_fit.py`.
 
