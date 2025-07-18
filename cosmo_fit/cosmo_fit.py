@@ -12,8 +12,9 @@ from scipy.optimize import minimize, differential_evolution
 from scipy.interpolate import interp1d
 from float4096 import (
     Float4096, Float4096Array, ComplexFloat4096, GRAElement, GoldenClassField,
-    sqrt, log, log10, pi_val, linspace, logspace, mean, stddev,
-    D, D_x, F_x, invert_D, Spin, Splice, field_yield, labeled_output
+    sqrt, log, log10, pi_val, linspace, logspace, mean, stddev, abs, max,
+    D, D_x, F_x, invert_D, Spin, Splice, field_yield, labeled_output,
+    prepare_prime_interpolation
 )
 
 # Configuration
