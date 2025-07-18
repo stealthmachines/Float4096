@@ -126,8 +126,10 @@ Float4096/
 ├── float4096/
 │   ├── __init__.py
 │   ├── float4096.py
-│   └── tests/
-│       └── test_float4096.py
+├── tests/
+│      └── test_float4096.py
+├── cosmo_fit/
+│     └── cosmo_fit.py
 ├── setup.py
 ├── requirements.txt
 └── README.md
@@ -140,15 +142,15 @@ This command removes the float4096 package, deactivates and deletes the virtual 
 
 Linux/macOS (Bash/Zsh):
 ```
-cd Float4096 && [ -d venv ] && . venv/bin/activate && pip uninstall -y float4096 && deactivate && rm -rf venv && cd .. && rm -rf Float4096
+cd Float4096 && [ -d venv ] && . venv/bin/activate && pip uninstall -y float4096 && deactivate && cd .. && rm -rf Float4096
 ```
 Windows (Git Bash/WSL):
 ```
-cd Float4096 && [ -d venv ] && . venv/Scripts/activate && pip uninstall -y float4096 && deactivate && rm -rf venv && cd .. && rm -rf Float4096
+cd Float4096 && [ -d venv ] && . venv/Scripts/activate && pip uninstall -y float4096 && deactivate && cd .. && rm -rf Float4096
 ```
 Windows (PowerShell):
 ```
-cd Float4096; if (Test-Path venv) { . .\venv\Scripts\Activate.ps1; pip uninstall -y float4096; deactivate; Remove-Item -Recurse -Force venv }; cd ..; Remove-Item -Recurse -Force Float4096
+cd Float4096; if (Test-Path venv) { . .\venv\Scripts\Activate.ps1; pip uninstall -y float4096; deactivate; cd ..; Remove-Item -Recurse -Force Float4096
 ```
 
 Breakdown:
@@ -159,7 +161,7 @@ pip uninstall -y float4096: Uninstalls the float4096 package without prompting.
 deactivate: Deactivates the virtual environment.
 rm -rf venv (or Remove-Item -Recurse -Force venv): Deletes the virtual environment.
 cd .. && rm -rf Float4096 (or cd ..; Remove-Item -Recurse -Force Float4096): Moves up one directory and deletes the cloned repository.
-```
+
 
 ## License
 zchg.org License(https://zchg.org/t/legal-notice-copyright-applicable-ip-and-licensing-read-me/440)
