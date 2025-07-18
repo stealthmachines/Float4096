@@ -12,6 +12,7 @@ git clone https://github.com/stealthmachines/Float4096.git
 cd Float4096
 chmod +x setup_project.sh
 ./setup_project.sh both
+```
 
 
 ## Or manually, if you prefer - 
