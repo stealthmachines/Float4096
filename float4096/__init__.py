@@ -60,3 +60,4 @@ from .float4096 import (
     P_nb,
     solve_n_beta_for_prime,
 )
+from .base4096 import encode, decode
