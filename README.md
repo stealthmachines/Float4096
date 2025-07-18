@@ -135,6 +135,11 @@ Float4096/
 └── README.md
 ```
 
+## Reinstall or Upgrade to Latest
+```
+ pip install --force-reinstall git+https://github.com/stealthmachines/Float4096.git
+```
+
 ## Uninstall
 
 1. Single-Line Uninstall Command
