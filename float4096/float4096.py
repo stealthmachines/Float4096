@@ -37,9 +37,9 @@ spline_cache = {}
 # --- Float4096 enhancements and helpers ---
 
 # Negation method for Float4096
-def negate(self):
-    return Float4096(self.digits[:], self.exponent, -self.sign)
-Float4096.negate = negate  # Attach to class
+# def negate(self):
+#     return Float4096(self.digits[:], self.exponent, -self.sign)
+# Float4096.negate = negate  # Attach to class
 
 # Define pow, log10, linspace, logspace
 def pow_f(x: 'Float4096', y: 'Float4096') -> 'Float4096':
