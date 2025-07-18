@@ -56,6 +56,10 @@ chmod +x setup_project.sh
    ```bash
    python -m unittest float4096/tests/test_float4096.py
    ```
+   or
+   ```
+   pytest -v > pytest_output.txt
+   ```
 
 ## Usage
 
