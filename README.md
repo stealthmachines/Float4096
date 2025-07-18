@@ -51,8 +51,12 @@ chmod +x setup_project.sh
    ```bash
    pip install .
    ```
+   or you may need to use this mode if things get hairy:
+   ```
+   pip install -e .
+   ```
 
-5. **Verify Installation**:
+6. **Verify Installation**:
    ```bash
    python -m unittest float4096/tests/test_float4096.py
    ```
