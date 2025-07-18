@@ -142,7 +142,7 @@ Float4096/
 
 ## Uninstall
 
-1. Single-Line Uninstall Command
+Single-Line Uninstall Command
 This command removes the float4096 package and optionally removes the cloned repository directory. It assumes the user is in the Float4096 directory after running the Git clone command.  Consult 'breakdown' for environment removal and other options.
 
 Linux/macOS (Bash/Zsh):
