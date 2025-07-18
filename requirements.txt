@@ -5,7 +5,7 @@ matplotlib>=3.4.0
 tqdm>=4.60.0
 joblib>=1.0.0
 sympy>=1.8
-# Note: Because latest Base4096 is better and not currently loaded into PIP as with V1.0 (due to copyright), install it from source:
+# Note: Because latest Base4096 is better and not currently loaded into PIP as with V1.0 (due to copyright), install latest from source:
 pip install git+https://github.com/ZCHGorg/base4096.git
 base4096
 pytest>=7.0.0
