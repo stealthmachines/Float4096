@@ -63,7 +63,10 @@ from .float4096 import (
     phi,
     sqrt5,
     k,
-    r
+    r,
+    fib_real,
+    fib_cache,
+    cache_set,
 )
 
 __all__ = [
