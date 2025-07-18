@@ -22,11 +22,19 @@ def generate_primes(n):
                 sieve[j] = False
     return [i for i in range(n + 1) if sieve[i]]
 
-PRIMES = generate_primes(104729)[:10000]  # First 10,000 primes
-phi = None  # Initialized later
+primes_file = "primes_cache.pkl"
+if os.path.exists(primes_file):
+    with open(primes_file, "rb") as f:
+        PRIMES = pickle.load(f)
+else:
+    PRIMES = generate_primes(104729)[:10000]
+    with open(primes_file, "wb") as f:
+        pickle.dump(PRIMES, f)
+
+phi = None
 sqrt5 = None
 Omega = sp.Symbol("Ω", positive=True)
-k = None  # Initialized later
+k = None
 r = None
 pi_val = None
 
@@ -42,6 +50,19 @@ def cache_set(cache, key, value):
     cache[key] = value
     if len(cache) > MAX_CACHE_SIZE:
         cache.popitem(last=False)
+
+def prepare_prime_interpolation(primes_list=PRIMES):
+    cache_file = "prime_interp_cache.pkl"
+    if os.path.exists(cache_file):
+        with open(cache_file, "rb") as f:
+            recursive_index_phi = pickle.load(f)
+    else:
+        indices = [float(i + 1) for i in range(len(primes_list))]
+        phi_float = float((1 + math.sqrt(5)) / 2)
+        recursive_index_phi = [math.log(i + 1) / math.log(phi_float) for i in indices]
+        with open(cache_file, "wb") as f:
+            pickle.dump(recursive_index_phi, f)
+    return lambda x: native_cubic_spline(x, recursive_index_phi, primes_list)
 
 # FFT setup
 try:
@@ -62,18 +83,6 @@ def native_prime_product(n: int) -> 'Float4096':
         product *= Float4096(p)
     cache_set(prime_product_cache, n, product)
     return product
-
-def prepare_prime_interpolation(primes_list=PRIMES):
-    cache_file = "prime_interp_cache.pkl"
-    if os.path.exists(cache_file):
-        with open(cache_file, "rb") as f:
-            recursive_index_phi = pickle.load(f)
-    else:
-        indices = [float(i + 1) for i in range(len(primes_list))]
-        recursive_index_phi = [float(log(Float4096(i + 1)) / log(phi)) for i in indices]
-        with open(cache_file, "wb") as f:
-            pickle.dump(recursive_index_phi, f)
-    return lambda x: native_cubic_spline(x, recursive_index_phi, primes_list)
 
 def fib_real(n: 'Float4096') -> 'Float4096':
     """Native base4096 Fibonacci using Binet's formula"""
