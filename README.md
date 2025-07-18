@@ -8,23 +8,6 @@ A high-precision floating-point arithmetic library using native base4096 represe
 
 ## Installation
 
-**EASY BUTTON:**
-```bash
-cd "$(pwd)" && (command -v python3 >/dev/null 2>&1 && python3 -m venv venv || python -m venv venv) && ( [ -f venv/bin/activate ] && . venv/bin/activate || . venv/Scripts/activate ) && export PYTHONPATH="$PYTHONPATH:$(pwd)" && pip install --upgrade pip && pip install -r requirements.txt && pip install . && pytest tests/test_float4096.py -v && python cosmo_fit/cosmo_fit.py
-
-Breakdown of the Command
-cd "$(pwd)": Ensures the command runs from project_root.
-(command -v python3 >/dev/null 2>&1 && python3 -m venv venv || python -m venv venv): Checks for python3, falls back to python, ensuring Python 3.8+ is used to create the virtual environment.
-([ -f venv/bin/activate ] && . venv/bin/activate || . venv/Scripts/activate): Activates the virtual environment, using venv/bin/activate for Linux/macOS or venv/Scripts/activate for Windows.
-export PYTHONPATH="$PYTHONPATH:$(pwd)": Adds project_root to PYTHONPATH for module imports.
-pip install --upgrade pip: Upgrades pip for reliable dependency installation.
-pip install -r requirements.txt: Installs dependencies from requirements.txt.
-pip install .: Installs the float4096 package using setup.py.
-pytest tests/test_float4096.py -v: Runs tests with verbose output.
-python cosmo_fit/cosmo_fit.py: Runs cosmo_fit.py.
-
-**FOR THOSE WHO PREFER TO DO IT MANUALLY:**
-
 1. **Clone the Repository**:
    ```bash
    git clone https://github.com/stealthmachines/Float4096.git
