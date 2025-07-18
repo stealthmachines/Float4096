@@ -29,7 +29,7 @@ chmod +x setup_project.sh
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install Dependencies**:
+3. **Install Dependencies (failing 'pip install .', below**:
    Save the following in `requirements.txt`:
    ```text
    numpy>=1.20.0
@@ -39,7 +39,7 @@ chmod +x setup_project.sh
    # Note: latest base4096 is not on PyPI, install it for now from source:
    pip install git+https://github.com/ZCHGorg/base4096.git
    ```
-   Install dependencies:
+   Install dependencies (failing 'pip install .', below:
    ```bash
    pip install git+https://github.com/ZCHGorg/base4096.git
    pip install -r requirements.txt
