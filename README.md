@@ -166,7 +166,7 @@ pip uninstall -y float4096: Uninstalls the float4096 package without prompting.
 deactivate: Deactivates the virtual environment.
 
 
-# Speaking of Environments..
+# Speaking of Environments (for those who messed up their environments, salvation..)
 
 (Replace Owner with your username)
 
