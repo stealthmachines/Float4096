@@ -109,7 +109,11 @@ def native_zeta(s: complex, max_terms: int = 500) -> 'ComplexFloat4096':
         return zeta_cache[s_key]
     real_sum = Float4096(0)
     imag_sum = Float4096(0)
-    s_real, s_imag = float(s.real), float(s.imag)
+    # Handle both complex and real inputs
+    if sp.is_complex(s) or isinstance(s, complex):
+        s_real, s_imag = float(s.real), float(s.imag)
+    else:
+        s_real, s_imag = float(s), 0.0  # Treat as real number with zero imaginary part
     for n in range(1, max_terms + 1):
         n_float = Float4096(n)
         term = Float4096(1) / pow_f4096(n_float, Float4096(s_real))
