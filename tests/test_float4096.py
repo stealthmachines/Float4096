@@ -24,6 +24,16 @@ PI = pi_val()
 def prime_interp():
     return PRIME_INTERP
 
+def test_cosmo_fit_integration():
+    prime_interp = prepare_prime_interpolation()
+    n, beta = Float4096(2), Float4096(0.5)
+    val = D(n, beta, prime_interp=prime_interp)
+    assert val.is_finite()
+    assert float(val) > 0
+    n_est, beta_est, scale_est, _, r_est, k_est = invert_D(val, prime_interp=prime_interp)
+    assert n_est is not None
+    assert abs(float(n_est) - float(n)) < 1e-5
+
 # Test Float4096 arithmetic
 def test_float4096_arithmetic():
     a = Float4096(2.5)
