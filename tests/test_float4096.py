@@ -72,7 +72,7 @@ from float4096 import (
 # Constants for testing
 EPSILON = Float4096("1e-20")
 PRIME_INTERP = prepare_prime_interpolation()
-PI = pi_val()
+PI = pi_val
 
 @pytest.fixture(autouse=True)
 def setup_globals():
