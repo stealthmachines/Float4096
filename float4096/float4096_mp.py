@@ -1,4 +1,6 @@
+# root_folder/float4096/float4096_mp.py
 import mpmath
+from .float4096 import prepare_prime_interpolation, fib_real, native_prime_product, P_nb
 
 # Set precision to about 4096 bits (~1234 decimal digits)
 mpmath.mp.dps = 1234
@@ -109,9 +111,25 @@ def exp(x):
 
 def log(x):
     if isinstance(x, Float4096):
+        if x.val <= 0:
+            raise ValueError("Log of non-positive number")
         return Float4096(mpmath.log(x.val))
     else:
-        return Float4096(mpmath.log(mpmath.mpf(x)))
+        x_mpf = mpmath.mpf(x)
+        if x_mpf <= 0:
+            raise ValueError("Log of non-positive number")
+        return Float4096(mpmath.log(x_mpf))
+
+def log10(x):
+    if isinstance(x, Float4096):
+        if x.val <= 0:
+            raise ValueError("Log of non-positive number")
+        return Float4096(mpmath.log10(x.val))
+    else:
+        x_mpf = mpmath.mpf(x)
+        if x_mpf <= 0:
+            raise ValueError("Log of non-positive number")
+        return Float4096(mpmath.log10(x_mpf))
 
 def sin(x):
     if isinstance(x, Float4096):
@@ -133,27 +151,67 @@ def pow_f4096(base, exponent):
 # --- GRAElement class ---
 
 class GRAElement:
-    def __init__(self, value):
-        # value can be int, float, string, or Float4096
-        self.value = Float4096(value)
+    def __init__(self, n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None):
+        if float(n) < 1:
+            raise ValueError("n must be >= 1")
+        self.n = Float4096(n)
+        self.Omega = Float4096(Omega)
+        self.base = Float4096(base)
+        self.prime_interp = prime_interp or prepare_prime_interpolation()
+        self._value = self._compute_r_n()
 
-    def __add__(self, other):
-        return GRAElement(self.value + other.value)
+    def _compute_r_n(self) -> Float4096:
+        try:
+            if float(self.n) > 1000:
+                return Float4096(0)
+            n_int = int(float(self.n))
+            Fn = fib_real(self.n)
+            if Fn == Float4096(0):
+                return Float4096(0)
+            product = native_prime_product(n_int)
+            val = Float4096((1 + mpmath.sqrt(5)) / 2) * self.Omega * Fn * pow_f4096(self.base, self.n) * product
+            return sqrt(val) if val.isfinite() and val > Float4096(0) else Float4096(0)
+        except Exception:
+            return Float4096(0)
 
-    def __sub__(self, other):
-        return GRAElement(self.value - other.value)
+    @classmethod
+    def from_recursive(cls, n: Float4096, prev_r_n_minus_1: 'GRAElement' = None, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> 'GRAElement':
+        n = Float4096(n)
+        if float(n) < 1:
+            raise ValueError("n must be >= 1")
+        if float(n) == 1:
+            return cls(n, Omega, base, prime_interp)
+        if prev_r_n_minus_1 is None:
+            prev_r_n_minus_1 = cls(n - Float4096(1), Omega, base, prime_interp)
+        Fn = fib_real(n)
+        Fn_minus_1 = fib_real(n - Float4096(1))
+        if Fn == Float4096(0) or Fn_minus_1 == Float4096(0):
+            return cls(n, Omega, base, prime_interp)
+        p_n = P_nb(n, prime_interp or prepare_prime_interpolation())
+        factor = sqrt(Float4096(2) * p_n * (Fn / Fn_minus_1))
+        r_n = prev_r_n_minus_1._value * factor
+        result = cls(n, Omega, base, prime_interp)
+        result._value = r_n if r_n.isfinite() and r_n > Float4096(0) else result._value
+        return result
 
-    def __mul__(self, other):
-        return GRAElement(self.value * other.value)
+    def gra_multiply(self, other: 'GRAElement') -> 'GRAElement':
+        if not isinstance(other, GRAElement):
+            raise ValueError("GRA multiplication requires a GRAElement")
+        if float(self.n) != float(other.n) + 1:
+            raise ValueError("GRA multiplication requires n = m + 1")
+        return GRAElement.from_recursive(self.n, prev_r_n_minus_1=other, Omega=self.Omega, base=self.base, prime_interp=self.prime_interp)
 
-    def __truediv__(self, other):
-        return GRAElement(self.value / other.value)
+    def gra_add(self, other: 'GRAElement') -> Float4096:
+        if not isinstance(other, GRAElement):
+            raise ValueError("GRA addition requires a GRAElement")
+        result = sqrt(self._value ** Float4096(2) + other._value ** Float4096(2))
+        return result if result.isfinite() else Float4096(0)
 
-    def __pow__(self, other):
-        return GRAElement(pow_f4096(self.value, other.value))
+    def __float__(self) -> float:
+        return float(self._value)
 
-    def __repr__(self):
-        return f"GRAElement({repr(self.value)})"
+    def __str__(self) -> str:
+        return f"GRAElement({float(self._value)})"
 
 # --- Fibonacci using Float4096 ---
 
@@ -162,39 +220,28 @@ def fibonacci(n):
     sqrt5 = sqrt(Float4096(5))
     phi = (Float4096(1) + sqrt5) / Float4096(2)
     psi = (Float4096(1) - sqrt5) / Float4096(2)
-    # Binet's formula: (phi^n - psi^n)/sqrt(5)
     return ((pow_f4096(phi, n) - pow_f4096(psi, n)) / sqrt5)
 
 # --- Example usage ---
 
 if __name__ == "__main__":
     print("4096-bit precision Float and Fibonacci Demo")
-
-    # Create some Float4096 numbers
     a = Float4096("1.234567890123456789")
     b = Float4096("2.34567890123456789")
-
     print(f"a = {a}")
     print(f"b = {b}")
     print(f"a + b = {a + b}")
     print(f"a * b = {a * b}")
     print(f"sqrt(a) = {sqrt(a)}")
-
-    # GRAElement usage
-    x = GRAElement("3.141592653589793238462643383279502884")
-    y = GRAElement("2.718281828459045235360287471352662497")
+    x = GRAElement(Float4096(2))
+    y = GRAElement(Float4096(1))
     print(f"x = {x}")
-    print(f"y = {y}")
-    print(f"x^y = {x ** y}")
-
-    # Fibonacci number with high precision
-    n = 100  # example large n
+    print(f"x + y = {x.gra_add(y)}")
+    print(f"x * y = {x.gra_multiply(y)}")
+    n = 100
     fib_n = fibonacci(n)
     print(f"Fibonacci({n}) = {fib_n}")
-    # To get integer approximation:
     print(f"Integer approximation of Fibonacci({n}): {int(mpmath.nint(fib_n.val))}")
-
-    # ComplexFloat4096 demo
     c1 = ComplexFloat4096(a, b)
     c2 = ComplexFloat4096(b, a)
     print(f"c1 = {c1}")
