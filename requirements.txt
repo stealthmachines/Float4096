@@ -1,4 +1,3 @@
-# project_root/requirements.txt
 numpy>=1.21.0
 sympy>=1.8
 scipy>=1.7.0
@@ -6,7 +5,9 @@ pandas>=1.3.0
 matplotlib>=3.4.0
 tqdm>=4.60.0
 joblib>=1.0.0
+pyfftw>=0.13.0  # Optional, for FFT
 base4096 @ git+https://github.com/ZCHGorg/base4096module.git
+
+# Dev/Test extras
 pytest>=7.0.0
 pytest-benchmark>=4.0.0
-pyfftw>=0.13.0  # Optional, for faster FFT
