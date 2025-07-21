@@ -1,5 +1,3 @@
-# float4096/__init__.py
-
 from .float4096 import (
     Float4096,
     Float4096Array,
@@ -133,4 +131,7 @@ __all__ = [
     "sqrt5",
     "k",
     "r",
+    "fib_real",
+    "fib_cache",
+    "cache_set",
 ]
