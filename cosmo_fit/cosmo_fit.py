@@ -4,7 +4,7 @@ import signal
 import sys
 import logging
 import time
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -91,7 +91,10 @@ CONFIG = {
     'optimization_bounds': [(1e-10, 100), (1e-10, 100), (1e-10, 100), (1.5, 20), (1e-10, 1000)],
     'optimization_maxiter': 100,
     'optimization_popsize': 15,
-    'slsqp_maxiter': 500
+    'slsqp_maxiter': 500,
+    'n_jobs': 4,  # Limit to 4 cores to prevent resource exhaustion
+    'joblib_timeout': 300,  # Increased timeout to 300 seconds
+    'use_tqdm': True,  # Option to disable tqdm for debugging
 }
 
 # Set up logging
@@ -152,7 +155,8 @@ def generate_emergent_constants(n_max, beta_steps, r_values, k_values, Omega, ba
     field = GoldenClassField(s_list, x_list, prime_interp=prime_interp)
     field_dict = field.as_dict()
     
-    for n in tqdm(n_values, desc="Generating emergent constants"):
+    iterator = n_values if not CONFIG['use_tqdm'] else tqdm(n_values, desc="Generating emergent constants")
+    for n in iterator:
         for beta in beta_values:
             for r in r_values:
                 for k in k_values:
@@ -200,9 +204,10 @@ def match_to_codata(df_emergent, df_codata, tolerance, batch_size, prime_interp=
             'error', 'rel_error', 'codata_uncertainty', 'bad_data', 'bad_data_reason'
         ]).to_csv(f, sep="\t", index=False)
     
-    for start in range(0, len(df_codata), batch_size):
+    iterator = range(0, len(df_codata), batch_size) if not CONFIG['use_tqdm'] else tqdm(range(0, len(df_codata), batch_size), desc="Matching CODATA batches")
+    for start in iterator:
         batch = df_codata.iloc[start:start + batch_size]
-        for _, codata_row in tqdm(batch.iterrows(), total=len(batch), desc=f"Matching constants batch {start//batch_size + 1}"):
+        for _, codata_row in batch.iterrows():
             value = Float4096(codata_row['value'])
             emergent_values = Float4096Array(df_emergent['value'])
             rel_error = abs(emergent_values - value) / max(abs(value), Float4096("1e-30"))
@@ -383,13 +388,13 @@ def symbolic_fit_all_constants(df, base, Omega, r, k, scale, batch_size, prime_i
             'codata_uncertainty', 'emergent_uncertainty', 'scale', 'bad_data', 'bad_data_reason', 'r', 'k'
         ]).to_csv(f, sep="\t", index=False)
     
-    for start in range(0, len(df), batch_size):
+    iterator = range(0, len(df), batch_size) if not CONFIG['use_tqdm'] else tqdm(range(0, len(df), batch_size), desc="Fitting CODATA batches")
+    for start in iterator:
         batch = df.iloc[start:start + batch_size]
         try:
-            batch_results = Parallel(n_jobs=-1, timeout=120, backend='loky', maxtasksperchild=20)(
-                delayed(process_constant)(row, r, k, Omega, base, scale, prime_interp)
-                for row in tqdm(batch.to_dict('records'), total=len(batch), desc=f"Fitting constants batch {start//batch_size + 1}")
-            )
+            batch_results = Parallel(
+                n_jobs=CONFIG['n_jobs'], timeout=CONFIG['joblib_timeout'], backend='loky', max_nbytes='50M'
+            )(delayed(process_constant)(row, r, k, Omega, base, scale, prime_interp) for row in batch.to_dict('records'))
             batch_results = [r for r in batch_results if r is not None]
             results.extend(batch_results)
             try:
@@ -400,12 +405,20 @@ def symbolic_fit_all_constants(df, base, Omega, r, k, scale, batch_size, prime_i
                 logging.error(f"Failed to save batch {start//batch_size + 1} to {output_file}: {e}")
         except Exception as e:
             logging.error(f"Parallel processing failed for batch {start//batch_size + 1}: {e}")
-            continue
+            # Fallback to serial processing
+            batch_results = [process_constant(row, r, k, Omega, base, scale, prime_interp) for row in batch.to_dict('records')]
+            batch_results = [r for r in batch_results if r is not None]
+            results.extend(batch_results)
+            try:
+                with open(output_file, 'a', encoding='utf-8') as f:
+                    pd.DataFrame(batch_results).to_csv(f, sep="\t", index=False, header=False, lineterminator='\n')
+                    f.flush()
+            except Exception as e:
+                logging.error(f"Failed to save batch {start//batch_size + 1} to {output_file}: {e}")
     df_results = pd.DataFrame(results)
     if not df_results.empty:
         df_results['bad_data'] = df_results.get('bad_data', False)
         df_results['bad_data_reason'] = df_results.get('bad_data_reason', '')
-        # Replace percentile with numpy.percentile
         for name in df_results['name'].unique():
             mask = df_results['name'] == name
             if df_results.loc[mask, 'codata_uncertainty'].notnull().any():
@@ -512,7 +525,7 @@ def main():
         'Parsing data', 'Generating emergent constants', 'Optimizing CODATA parameters',
         'Fitting CODATA constants', 'Fitting supernova data', 'Generating plots'
     ]
-    progress = tqdm(stages, desc="Overall progress")
+    progress = tqdm(stages, desc="Overall progress", disable=not CONFIG['use_tqdm'])
     
     prime_interp = prepare_prime_interpolation()
     
