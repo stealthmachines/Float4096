@@ -17,9 +17,17 @@ if (-not (Get-Command $PYTHON -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-$PYTHON_VERSION = & $PYTHON --version | Select-String -Pattern "[0-9]\.[0-9]" | ForEach-Object { $_.Matches.Value }
-if ([version]$PYTHON_VERSION -lt [version]"3.8") {
-    Write-Error "Python 3.8 or higher required. Found version: $PYTHON_VERSION"
+# Parse version
+$PYTHON_VERSION_OUTPUT = & $PYTHON --version
+if ($PYTHON_VERSION_OUTPUT -match "Python (\d+)\.(\d+)\.(\d+)") {
+    $MAJOR = [int]$matches[1]
+    $MINOR = [int]$matches[2]
+    if ($MAJOR -lt 3 -or ($MAJOR -eq 3 -and $MINOR -lt 8)) {
+        Write-Error "Python 3.8 or higher required. Found version: $PYTHON_VERSION_OUTPUT"
+        exit 1
+    }
+} else {
+    Write-Error "Unable to parse Python version."
     exit 1
 }
 
@@ -46,48 +54,49 @@ if (Test-Path $ACTIVATE_SCRIPT) {
 }
 
 # Set PYTHONPATH
-$env:PYTHONPATH = "$env:PYTHONPATH;$PROJECT_ROOT"
+$env:PYTHONPATH = "$PROJECT_ROOT;$env:PYTHONPATH"
 Write-Host "Set PYTHONPATH to include $PROJECT_ROOT"
 
 # Install dependencies
-Write-Host "Installing dependencies from requirements.txt..."
+Write-Host "Installing requirements..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Install float4096 package
+# Install float4096 in editable mode
 Write-Host "Installing float4096 package..."
-pip install .
+pip install -e .
 
 # Function to run tests
 function Run-Tests {
     Write-Host "Running tests..."
-    if (-not (Test-Path "tests/test_float4096.py")) {
-        Write-Error "tests/test_float4096.py not found."
+    if (-not (Test-Path "tests")) {
+        Write-Error "tests/ directory not found."
         exit 1
     }
-    pytest tests/test_float4096.py -v
+    pytest tests -v
 }
 
 # Function to run cosmo_fit.py
 function Run-CosmoFit {
     Write-Host "Running cosmo_fit.py..."
-    if (-not (Test-Path "cosmo_fit/cosmo_fit.py")) {
-        Write-Error "cosmo_fit/cosmo_fit.py not found."
+    $COSMO_PATH = "cosmo_fit/cosmo_fit.py"
+    if (-not (Test-Path $COSMO_PATH)) {
+        Write-Error "$COSMO_PATH not found."
         exit 1
     }
-    python cosmo_fit/cosmo_fit.py
+    python $COSMO_PATH
 }
 
 # Parse command-line arguments
 switch ($args[0]) {
     "test" { Run-Tests }
     "cosmo" { Run-CosmoFit }
-    "both" { Run-Tests; Run-CosmoFit }
+    "both"  { Run-Tests; Run-CosmoFit }
     default {
         Write-Host "Usage: .\setup_project.ps1 {test|cosmo|both}"
-        Write-Host "  test: Run tests only"
-        Write-Host "  cosmo: Run cosmo_fit.py only"
-        Write-Host "  both: Run tests and cosmo_fit.py"
+        Write-Host "  test:   Run tests only"
+        Write-Host "  cosmo:  Run cosmo_fit.py only"
+        Write-Host "  both:   Run tests and cosmo_fit.py"
         exit 1
     }
 }
