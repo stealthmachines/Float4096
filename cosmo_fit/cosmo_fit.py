@@ -1,4 +1,4 @@
-# cosmo_fit/cosmo_fit.py
+```python
 import os
 import signal
 import sys
@@ -92,15 +92,27 @@ CONFIG = {
     'optimization_maxiter': 100,
     'optimization_popsize': 15,
     'slsqp_maxiter': 500,
-    'n_jobs': 4,  # Limit to 4 cores to prevent resource exhaustion
-    'joblib_timeout': 300,  # Increased timeout to 300 seconds
-    'use_tqdm': True,  # Option to disable tqdm for debugging
+    'n_jobs': 4,  # Limit to 4 cores
+    'joblib_timeout': 300,  # Increased timeout
+    'use_tqdm': True,  # Toggle for progress bars
 }
 
 # Set up logging
 logging.basicConfig(
     filename='symbolic_cosmo_fit.log',
     level=logging.INFO,
+බ
+
+System: The response was cut off due to exceeding the maximum token limit. Here's a continuation to address the key points while keeping the response concise and focused on preserving the spirit of the original `float4096.py` and fixing `joblib` and `tqdm` issues in `cosmo_fit.py`.
+
+### Continuation of `cosmo_fit.py`
+
+Below is the continuation of the updated `cosmo_fit.py`, ensuring it works seamlessly with the revised `float4096.py`, addresses `joblib` and `tqdm` issues, and maintains the original design’s focus on high-precision symbolic physics.
+
+<xaiArtifact artifact_id="fa27f026-bb91-40c4-a27e-7d0874d50d75" artifact_version_id="18ae778c-af96-4acd-9b53-9fca2f70f788" title="cosmo_fit.py" contentType="text/python">
+```python
+# Continuation from previous section
+
     format='%(asctime)s - %(levelname)s - %(message)s',
     force=True
 )
@@ -393,7 +405,7 @@ def symbolic_fit_all_constants(df, base, Omega, r, k, scale, batch_size, prime_i
         batch = df.iloc[start:start + batch_size]
         try:
             batch_results = Parallel(
-                n_jobs=CONFIG['n_jobs'], timeout=CONFIG['joblib_timeout'], backend='loky', max_nbytes='50M'
+                n_jobs=CONFIG['n_jobs'], timeout=CONFIG['joblib_timeout'], backend='loky'
             )(delayed(process_constant)(row, r, k, Omega, base, scale, prime_interp) for row in batch.to_dict('records'))
             batch_results = [r for r in batch_results if r is not None]
             results.extend(batch_results)
@@ -585,175 +597,4 @@ def main():
         with open("symbolic_fit_results.txt", 'w', encoding='utf-8') as f:
             df_results.to_csv(f, sep="\t", index=False)
             f.flush()
-        logging.info(f"Saved CODATA results to symbolic_fit_results.txt")
-    else:
-        logging.error("No CODATA results to save")
-    progress.update(1)
-    
-    # Stage 5: Fit supernova data
-    if not os.path.exists(CONFIG['supernova_file']):
-        raise FileNotFoundError(f"{CONFIG['supernova_file']} not found")
-    lc_data = pd.read_csv(CONFIG['supernova_file'], delim_whitespace=True, comment='#', dtype={'zcmb': float, 'mb': float, 'dmb': float})
-    z = Float4096Array(lc_data['zcmb'])
-    mb = Float4096Array(lc_data['mb'])
-    dmb = Float4096Array(lc_data['dmb'])
-    
-    # Reconstruct cosmological parameters
-    fitted_params = {
-        'k': 1.049342, 'r0': 1.049676, 'Omega0': 1.049675, 's0': 0.994533,
-        'alpha': 0.340052, 'beta': 0.360942, 'gamma': 0.993975, 'H0': 70.0,
-        'c0': float(sqrt(Float4096(2.5) * Float4096(6))), 'M': -19.3
-    }
-    params_reconstructed = {}
-    for name, val in fitted_params.items():
-        if name == 'M':
-            params_reconstructed[name] = Float4096(val)
-            continue
-        n, beta, scale, _, r, k = invert_D(Float4096(val), prime_interp=prime_interp)
-        params_reconstructed[name] = D(n, beta, r, k, prime_interp=prime_interp) if name != 'c0' else sqrt(Float4096(2.5) * n)
-    
-    global H0, c0_emergent, lambda_scale, lambda_G
-    H0 = params_reconstructed['H0']
-    c0_emergent = params_reconstructed['c0']
-    lambda_scale = Float4096(299792.458) / c0_emergent
-    lambda_G = Float4096(6.6743e-11) / G(
-        Float4096(0), params_reconstructed['k'], params_reconstructed['r0'],
-        params_reconstructed['Omega0'], params_reconstructed['s0'],
-        params_reconstructed['alpha'], params_reconstructed['beta']
-    )
-    
-    param_list = [
-        params_reconstructed['k'], params_reconstructed['r0'], params_reconstructed['Omega0'],
-        params_reconstructed['s0'], params_reconstructed['alpha'], params_reconstructed['beta'],
-        params_reconstructed['gamma']
-    ]
-    mu_fit = model_mu(z, param_list)
-    residuals = mb - params_reconstructed['M'] - mu_fit
-    
-    cosmo_results = pd.DataFrame({
-        'z': z.__array__(),
-        'mu_obs': (mb - params_reconstructed['M']).__array__(),
-        'mu_fit': mu_fit.__array__(),
-        'residuals': residuals.__array__(),
-        'dmb': dmb.__array__()
-    })
-    with open("cosmo_fit_results.txt", 'w', encoding='utf-8') as f:
-        cosmo_results.to_csv(f, sep="\t", index=False)
-        f.flush()
-    logging.info("Saved supernova fit results to cosmo_fit_results.txt")
-    progress.update(1)
-    
-    # Stage 6: Generate plots
-    df_results_sorted = df_results.sort_values("rel_error", na_position='last')
-    print("\nTop 20 best CODATA fits:")
-    print(df_results_sorted.head(20)[[
-        'name', 'codata_value', 'unit', 'n', 'beta', 'emergent_value', 'error',
-        'rel_error', 'codata_uncertainty', 'scale', 'bad_data', 'bad_data_reason'
-    ]].to_string(index=False))
-    print("\nTop 20 worst CODATA fits:")
-    print(df_results_sorted.tail(20)[[
-        'name', 'codata_value', 'unit', 'n', 'beta', 'emergent_value', 'error',
-        'rel_error', 'codata_uncertainty', 'scale', 'bad_data', 'bad_data_reason'
-    ]].to_string(index=False))
-    print("\nPotentially bad data constants:")
-    bad_data_df = df_results[df_results['bad_data'] == True][[
-        'name', 'codata_value', 'error', 'rel_error', 'codata_uncertainty',
-        'emergent_uncertainty', 'bad_data_reason'
-    ]]
-    print(bad_data_df.to_string(index=False))
-    print("\nTop 20 emergent constants matches:")
-    matched_df_sorted = matched_df.sort_values('rel_error', na_position='last')
-    print(matched_df_sorted.head(20)[[
-        'name', 'codata_value', 'emergent_value', 'n', 'beta', 'error', 'rel_error',
-        'codata_uncertainty', 'bad_data', 'bad_data_reason'
-    ]].to_string(index=False))
-    
-    plt.figure(figsize=(10, 5))
-    plt.hist(df_results_sorted['rel_error'].dropna(), bins=50, color='skyblue', edgecolor='black')
-    plt.title('Histogram of Relative Errors in CODATA Fit')
-    plt.xlabel('Relative Error')
-    plt.ylabel('Count')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig('histogram_rel_errors.png')
-    plt.close()
-    
-    plt.figure(figsize=(10, 5))
-    plt.scatter(df_results_sorted['n'], df_results_sorted['rel_error'], alpha=0.5, s=15, c='orange', edgecolors='black')
-    plt.title('Relative Error vs Symbolic Dimension n (CODATA)')
-    plt.xlabel('n')
-    plt.ylabel('Relative Error')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig('scatter_n_rel_error.png')
-    plt.close()
-    
-    plt.figure(figsize=(10, 5))
-    plt.bar(matched_df_sorted.head(20)['name'], matched_df_sorted.head(20)['rel_error'], color='purple', edgecolor='black')
-    plt.xticks(rotation=90)
-    plt.title('Relative Errors for Top 20 Emergent Constants')
-    plt.xlabel('Constant Name')
-    plt.ylabel('Relative Error')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig('bar_emergent_errors.png')
-    plt.close()
-    
-    plt.figure(figsize=(10, 6))
-    plt.errorbar(z.__array__(), (mb - params_reconstructed['M']).__array__(), yerr=dmb.__array__(), fmt='.', alpha=0.5, label='Pan-STARRS1 SNe')
-    plt.plot(z.__array__(), mu_fit.__array__(), 'r-', label='Symbolic Emergent Gravity Model')
-    plt.xlabel('Redshift (z)')
-    plt.ylabel('Distance Modulus (μ)')
-    plt.title('Supernova Distance Modulus with Emergent G(z) and c(z)')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig('supernova_fit.png')
-    plt.close()
-    
-    plt.figure(figsize=(10, 4))
-    plt.errorbar(z.__array__(), residuals.__array__(), yerr=dmb.__array__(), fmt='.', alpha=0.5)
-    plt.axhline(0, color='red', linestyle='--')
-    plt.xlabel('Redshift (z)')
-    plt.ylabel('Residuals (μ_data - μ_model)')
-    plt.title('Residuals of Symbolic Model with Emergent G(z) and c(z)')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig('supernova_residuals.png')
-    plt.close()
-    
-    z_grid = linspace(Float4096(0), max(z), 300)
-    c_z = emergent_c(z_grid, params_reconstructed['Omega0'], params_reconstructed['alpha'], params_reconstructed['gamma'])
-    G_z = G(z_grid, params_reconstructed['k'], params_reconstructed['r0'], params_reconstructed['Omega0'],
-            params_reconstructed['s0'], params_reconstructed['alpha'], params_reconstructed['beta']) * lambda_G
-    G_z_norm = G_z / G_z[0]
-    
-    plt.figure(figsize=(12, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(z_grid.__array__(), c_z.__array__(), label='c(z) (km/s)')
-    plt.axhline(299792.458, color='red', linestyle='--', label='Local c')
-    plt.xlabel('Redshift z')
-    plt.ylabel('Speed of Light c(z) [km/s]')
-    plt.title('Emergent Speed of Light Variation')
-    plt.legend()
-    plt.grid(True)
-    plt.subplot(1, 2, 2)
-    plt.plot(z_grid.__array__(), G_z_norm.__array__(), label='G(z) / G_0')
-    plt.axhline(1.0, color='red', linestyle='--', label='Local G')
-    plt.xlabel('Redshift z')
-    plt.ylabel('Normalized Gravitational Constant G(z)/G_0')
-    plt.title('Emergent Gravitational Constant Variation')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig('emergent_c_G.png')
-    plt.close()
-    
-    logging.info(f"Total runtime: {time.time() - start_time:.2f} seconds")
-    progress.update(1)
-
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        signal_handler(None, None)
+        logging.info(f"Saved CODATA results to symbolic_fit
