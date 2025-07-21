@@ -93,10 +93,12 @@ def prime_interp():
 
 def test_cosmo_fit_integration(prime_interp):
     n, beta = Float4096(2), Float4096(0.5)
-    val = D(n, beta, prime_interp=prime_interp)
+    Omega = Float4096(1)
+    base = Float4096(2)
+    val = D(n, beta, Omega=Omega, base=base, prime_interp=prime_interp)
     assert val.isfinite()
     assert float(val) > 0
-    n_est, beta_est, scale_est, _, r_est, k_est = invert_D(val, prime_interp=prime_interp)
+    n_est, beta_est, scale_est, _, r_est, k_est = invert_D(val, Omega=Omega, base=base, prime_interp=prime_interp)
     assert n_est is not None
     assert abs(float(n_est) - float(n)) < 1e-5
 
@@ -238,24 +240,26 @@ def test_cubic_spline():
     assert abs(result_edge - 9.0) < 1e-10
 
 def test_gra_element(prime_interp):
-    gra = GRAElement(Float4096(2), prime_interp=prime_interp)
+    Omega = Float4096(1)
+    base = Float4096(2)
+    gra = GRAElement(Float4096(2), Omega=Omega, base=base, prime_interp=prime_interp)
     assert gra._value.isfinite()
     assert float(gra) > 0
     
     # Recursive construction
-    gra_prev = GRAElement(Float4096(1), prime_interp=prime_interp)
-    gra_recursive = GRAElement.from_recursive(Float4096(2), gra_prev, prime_interp=prime_interp)
+    gra_prev = GRAElement(Float4096(1), Omega=Omega, base=base, prime_interp=prime_interp)
+    gra_recursive = GRAElement.from_recursive(Float4096(2), gra_prev, Omega=Omega, base=base, prime_interp=prime_interp)
     assert abs(gra._value - gra_recursive._value) < EPSILON
     
     # GRA operations
-    gra2 = GRAElement(Float4096(3), prime_interp=prime_interp)
+    gra2 = GRAElement(Float4096(3), Omega=Omega, base=base, prime_interp=prime_interp)
     gra_sum = gra.gra_add(gra2)
     assert abs(gra_sum - sqrt(gra._value ** 2 + gra2._value ** 2)) < EPSILON
     gra_mult = gra2.gra_multiply(gra)
     assert abs(gra_mult._value - gra2._value) < EPSILON
     
     # Large n
-    gra_large = GRAElement(Float4096(1500), prime_interp=prime_interp)
+    gra_large = GRAElement(Float4096(1500), Omega=Omega, base=base, prime_interp=prime_interp)
     assert gra_large._value == Float4096(0)
 
 def test_field_computations(prime_interp):
@@ -335,7 +339,9 @@ def test_morphing_scale_wrappers(prime_interp):
 def test_golden_class_field(prime_interp):
     s_list = [sp.Rational(1, 2), sp.Rational(1, 3)]
     x_list = [Float4096(1), Float4096(2)]
-    field = GoldenClassField(s_list, x_list, prime_interp=prime_interp)
+    Omega = Float4096(1)
+    base = Float4096(2)
+    field = GoldenClassField(s_list, x_list, Omega=Omega, base=base, prime_interp=prime_interp)
     
     field_dict = field.as_dict()
     assert len(field_dict) == len(s_list) * len(x_list)
