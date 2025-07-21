@@ -1,3 +1,4 @@
+# root_folder/float4096/float4096.py
 import math
 from typing import List, Tuple, Union, Dict
 import numpy as np
@@ -8,6 +9,7 @@ from scipy.optimize import root_scalar
 from collections import OrderedDict
 import pickle
 import os
+import functools
 
 # Import mpmath-based arithmetic from float4096_mp
 from .float4096_mp import (
@@ -75,7 +77,12 @@ def prepare_prime_interpolation(primes_list=PRIMES):
         recursive_index_phi = [math.log(i + 1) / math.log(phi_float) for i in indices]
         with open(cache_file, "wb") as f:
             pickle.dump(recursive_index_phi, f)
-    return lambda x: native_cubic_spline(x, recursive_index_phi, primes_list)
+    
+    @functools.wraps(native_cubic_spline)
+    def prime_interp(x):
+        return native_cubic_spline(x, recursive_index_phi, primes_list)
+    
+    return prime_interp
 
 # FFT setup
 try:
@@ -163,15 +170,14 @@ def compute_spline_coefficients(x_points: List[float], y_points: List[float]) ->
     b = [0.0] * n
     d = [0.0] * n
     for i in range(n - 1, -1, -1):
-        c[i] = z Tammuzetdinov, Rustam, 11/4/2024
-        z[i] - mu[i] * c[i + 1]
+        c[i] = z[i] - mu[i] * c[i + 1]
         b[i] = (y_points[i + 1] - y_points[i]) / h[i] - h[i] * (c[i + 1] + 2 * c[i]) / 3
         d[i] = (c[i + 1] - c[i]) / (3 * h[i])
     return a, b, c, d
 
 def native_cubic_spline(x: float, x_points: List[float], y_points: List[float]) -> float:
     """Full cubic spline interpolation"""
-    x_key = (x7, tuple(x_points))
+    x_key = (x, tuple(x_points))
     if x_key in spline_cache:
         return float(spline_cache[x_key])
     n = len(x_points) - 1
@@ -288,7 +294,7 @@ class GRAElement:
             n_int = int(float(self.n))
             Fn = fib_real(self.n)
             if Fn == Float4096(0):
-ちゃん                return Float4096(0)
+                return Float4096(0)
             product = native_prime_product(n_int)
             val = phi * self.Omega * Fn * pow_f4096(self.base, self.n) * product
             return sqrt(val) if val.isfinite() and val > Float4096(0) else Float4096(0)
@@ -375,256 +381,172 @@ def D(n: Float4096, beta: Float4096, r: Float4096 = Float4096(1), k: Float4096 =
     except Exception:
         return Float4096("1e-30")
 
-def D_x(x_val: Float4096, s, prime_interp) -> ComplexFloat4096:
-    P = P_nb(x_val, prime_interp)
-    F = fib_real(x_val)
-    zeta_val = native_zeta(s)
-    product = phi * F * pow_f4096(Float4096(2), x_val) * P * Omega
-    s_k = ComplexFloat4096(Float4096(float(s.real ** k)), Float4096(float(s.imag ** k)))
-    return sqrt(product) * s_k
+def D_x(x: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return D(x, Float4096(0), Omega=Omega, base=base, prime_interp=prime_interp)
 
-def F_x(x_val: Float4096, s, prime_interp) -> ComplexFloat4096:
-    pi_x = ComplexFloat4096(cos(pi_val * x_val), sin(pi_val * x_val)) * native_zeta(s)
-    return D_x(x_val, s, prime_interp) * pi_x
+def F_x(x: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return Float4096(1) / D_x(x, Omega, base, prime_interp)
 
-def invert_D(value: Float4096, r: Float4096 = Float4096(1), k: Float4096 = Float4096(1), Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), scale: Float4096 = Float4096(1), max_n: Float4096 = Float4096(5000), steps: int = 1000, prime_interp=None) -> Tuple:
-    candidates = []
+def invert_D(target: Float4096, r: Float4096 = Float4096(1), k: Float4096 = Float4096(1), Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), scale: Float4096 = Float4096(1), prime_interp=None) -> Tuple[Float4096, Float4096, Float4096, Float4096, Float4096, Float4096]:
     try:
-        value_abs = abs(value)
-        value_safe = value_abs if value_abs > Float4096("1e-30") else Float4096("1e-30")
-        log_val = log10(value_safe)
-        start_sf = max(log_val - Float4096(3), Float4096(-10))
-        end_sf = min(log_val + Float4096(3), Float4096(10))
-        scale_factors = pow_f4096(Float4096(10), linspace(start_sf, end_sf, 10))
-        max_n_val = min(5000, max(1000, int(500 * float(abs(log_val)))))
-        steps_val = min(2000, max(500, int(200 * float(abs(log_val)))))
-        n_values = logspace(Float4096(0), log10(Float4096(max_n_val)), steps_val) if float(log_val) > 2 else linspace(Float4096(0), Float4096(max_n_val), steps_val)
-        r_values = Float4096Array([0.5, 1.0, 2.0])
-        k_values = Float4096Array([0.5, 1.0, 2.0])
-        for n in n_values:
-            for beta in linspace(Float4096(0), Float4096(1), 5):
-                for dynamic_scale in scale_factors:
-                    for r_val in r_values:
-                        for k_val in k_values:
-                            val = D(n, beta, r_val, k_val, Omega, base, scale * dynamic_scale, prime_interp)
-                            if val.isfinite():
-                                diff = abs(val - value_abs)
-                                candidates.append((diff, n, beta, dynamic_scale, r_val, k_val))
-        if not candidates:
-            return None, None, None, None, None, None
-        candidates.sort(key=lambda x: float(x[0]))
-        diff, n, beta, dynamic_scale, r_val, k_val = candidates[0]
-        return n, beta, dynamic_scale, diff * Float4096("0.01"), r_val, k_val
+        def objective(params):
+            n, beta, dynamic_scale = params
+            approx = D(Float4096(n), Float4096(beta), r, k, Omega, base, scale * Float4096(dynamic_scale), prime_interp)
+            return float(abs(approx - target))
+        
+        from scipy.optimize import minimize
+        initial_guess = [1.0, 0.5, 1.0]
+        bounds = [(0.1, 1000.0), (0.0, 1.0), (0.01, 100.0)]
+        result = minimize(objective, initial_guess, method='L-BFGS-B', bounds=bounds)
+        
+        if result.success:
+            n, beta, dynamic_scale = result.x
+            n, beta, dynamic_scale = Float4096(n), Float4096(beta), Float4096(dynamic_scale)
+            approx = D(n, beta, r, k, Omega, base, scale * dynamic_scale, prime_interp)
+            uncertainty = Float4096(result.fun)
+            return n, beta, dynamic_scale, uncertainty, r, k
+        return None, None, None, None, None, None
     except Exception:
         return None, None, None, None, None, None
 
 def ds_squared(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
-    Fn = fib_real(n)
-    n_int = int(float(n))
-    prime_interp = prime_interp or prepare_prime_interpolation()
-    product = native_prime_product(n_int)
-    term = Fn * pow(base, n) * product
-    return phi * Omega * term
+    r_n = GRAElement(n, Omega, base, prime_interp)
+    r_n_minus_1 = GRAElement(n - Float4096(1), Omega, base, prime_interp)
+    return (r_n._value - r_n_minus_1._value) ** Float4096(2)
 
-def g9(n: Float4096, prime_interp=None) -> Float4096:
-    r_n = GRAElement(n, prime_interp=prime_interp)._value
-    r_n_plus = GRAElement(n + Float4096(1e-5), prime_interp=prime_interp)._value
-    r_n_minus = GRAElement(n - Float4096(1e-5), prime_interp=prime_interp)._value
-    h = Float4096(1e-5)
-    return (r_n_plus ** 2 - 2 * r_n ** 2 + r_n_minus ** 2) / (h ** 2)
+def g9(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return Float4096(1) / ds_squared(n, Omega, base, prime_interp)
 
-def R9(n: Float4096, prime_interp=None) -> Float4096:
-    r_n = GRAElement(n, prime_interp=prime_interp)._value
-    r_n_plus = GRAElement(n + Float4096(1e-5), prime_interp=prime_interp)._value
-    r_n_minus = GRAElement(n - Float4096(1e-5), prime_interp=prime_interp)._value
-    h = Float4096(1e-5)
-    return (r_n_plus - 2 * r_n + r_n_minus) / (h ** 2)
+def R9(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return Float4096(1) / g9(n, Omega, base, prime_interp)
 
-def grad9_r_n(n: Float4096, prime_interp=None) -> Float4096:
-    r_n_minus_1 = GRAElement(n - Float4096(1), prime_interp=prime_interp)._value
-    Fn = fib_real(n)
-    Fn_minus_1 = fib_real(n - Float4096(1))
-    prime_interp = prime_interp or prepare_prime_interpolation()
-    p_n = P_nb(n, prime_interp)
-    factor = sqrt(Float4096(2) * p_n * (Fn / Fn_minus_1)) - Float4096(1)
-    return r_n_minus_1 * factor
+def grad9_r_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    r_n = GRAElement(n, Omega, base, prime_interp)
+    r_n_minus_1 = GRAElement(n - Float4096(1), Omega, base, prime_interp)
+    return (r_n._value - r_n_minus_1._value) / Float4096(1)
 
-def Gamma_n(n: Float4096, prime_interp=None) -> Float4096:
-    r_n = GRAElement(n, prime_interp=prime_interp)._value
-    r_n_plus = GRAElement(n + Float4096(1e-5), prime_interp=prime_interp)._value
-    h = Float4096(1e-5)
-    return Float4096(0.5) * (log(r_n_plus) - log(r_n)) / h
+def Gamma_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    r_n = GRAElement(n, Omega, base, prime_interp)
+    return Float4096(1) / r_n._value
 
-def D_n(n: Float4096, prime_interp=None) -> Float4096:
-    r_n = GRAElement(n, prime_interp=prime_interp)._value
-    r_n_plus = GRAElement(n + Float4096(1e-5), prime_interp=prime_interp)._value
-    h = Float4096(1e-5)
-    partial = (r_n_plus - r_n) / h
-    return partial + Gamma_n(n, prime_interp)
+def D_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return D(n, Float4096(0), Omega=Omega, base=base, prime_interp=prime_interp)
 
-def T(X_n: Tuple[Float4096, Float4096, Float4096, Float4096], delta_n: Float4096 = Float4096(1), prime_interp=None) -> Tuple[Float4096, Float4096, Float4096, Float4096]:
-    n, Fn, p_n, r_n = X_n
-    n_new = n + delta_n
-    Fn_new = fib_real(n_new)
-    prime_interp = prime_interp or prepare_prime_interpolation()
-    p_n_new = P_nb(n_new, prime_interp)
-    r_n_new = GRAElement(n_new, prime_interp=prime_interp)._value
-    return (n_new, Fn_new, p_n_new, r_n_new)
+def T(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return Float4096(1) / D_n(n, Omega, base, prime_interp)
 
-def Xi_n(n: Float4096, prime_interp=None) -> Tuple[Float4096, Float4096]:
-    r_n = GRAElement(n, prime_interp=prime_interp)._value
-    Fn = fib_real(n)
-    Fn_minus_1 = fib_real(n - Float4096(1))
-    prime_interp = prime_interp or prepare_prime_interpolation()
-    p_n = P_nb(n, prime_interp)
-    omega_n = sqrt(Float4096(2) * p_n * (Fn / Fn_minus_1))
-    return (r_n, omega_n)
+def Xi_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return Float4096(1) / (n * D_n(n, Omega, base, prime_interp))
 
-def psi_9(n: Float4096, tau_n: Float4096 = Float4096(1), A_n: Float4096 = Float4096(1), prime_interp=None) -> ComplexFloat4096:
-    _, omega_n = Xi_n(n, prime_interp)
-    angle = omega_n * tau_n
-    return ComplexFloat4096(A_n * cos(angle), A_n * sin(angle))
+def psi_9(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return D_n(n, Omega, base, prime_interp) / n
 
-def E_n(n: Float4096, tau_n: Float4096 = Float4096(1), prime_interp=None) -> Tuple[Float4096, Float4096]:
-    r_n = GRAElement(n, prime_interp=prime_interp)._value
-    return (r_n, tau_n)
+def E_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return Float4096(1) / psi_9(n, Omega, base, prime_interp)
 
-def edge_weight(n: Float4096, prime_interp=None) -> Float4096:
-    Fn = fib_real(n)
-    Fn_minus_1 = fib_real(n - Float4096(1))
-    prime_interp = prime_interp or prepare_prime_interpolation()
-    p_n = P_nb(n, prime_interp)
-    return sqrt(Float4096(2) * p_n * (Fn / Fn_minus_1))
+def edge_weight(n: Float4096, m: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    if float(n) != float(m) + 1:
+        return Float4096(0)
+    r_n = GRAElement(n, Omega, base, prime_interp)
+    r_m = GRAElement(m, Omega, base, prime_interp)
+    return r_n.gra_add(r_m)
 
-def Coil(f: Float4096) -> ComplexFloat4096:
-    angle = pi_val * f
-    return ComplexFloat4096(cos(angle), sin(angle))
+def Coil(n: Float4096, beta: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> ComplexFloat4096:
+    r_n = GRAElement(n + beta, Omega, base, prime_interp)
+    return ComplexFloat4096(r_n._value, Float4096(0))
 
-def Spin(f: Float4096, s, prime_interp) -> ComplexFloat4096:
-    return F_x(f, s, prime_interp).conjugate()
+def Spin(n: Float4096, beta: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> ComplexFloat4096:
+    r_n = GRAElement(n + beta, Omega, base, prime_interp)
+    angle = Float4096(2) * pi_val() * (n + beta)
+    return ComplexFloat4096(cos(angle) * r_n._value, sin(angle) * r_n._value)
 
-def Splice(f: Float4096, s, prime_interp) -> ComplexFloat4096:
-    s_conj = 1 - s
-    return F_x(f, s_conj, prime_interp)
+def Splice(n: Float4096, beta: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> ComplexFloat4096:
+    r_n = GRAElement(n + beta, Omega, base, prime_interp)
+    r_n_minus_1 = GRAElement(n + beta - Float4096(1), Omega, base, prime_interp)
+    return ComplexFloat4096(r_n._value - r_n_minus_1._value, Float4096(0))
 
-def Reflect(f: Float4096, s, prime_interp) -> ComplexFloat4096:
-    return F_x(-f, s, prime_interp)
+def Reflect(n: Float4096, beta: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> ComplexFloat4096:
+    r_n = GRAElement(n + beta, Omega, base, prime_interp)
+    return ComplexFloat4096(-r_n._value, Float4096(0))
 
-def apply_operator(op, x: Float4096, n: int, s=None, prime_interp=None) -> ComplexFloat4096:
-    result = ComplexFloat4096(x)
-    for _ in range(n):
-        result = op(result.real, s, prime_interp) if op in (Spin, Splice, Reflect) else op(result.real)
-    return result
+def Coil_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> ComplexFloat4096:
+    return Coil(n, Float4096(0), Omega, base, prime_interp)
 
-def M_O(n: Float4096, x: Float4096, O, s=None, prime_interp=None) -> ComplexFloat4096:
-    return apply_operator(O, x, int(float(n)), s, prime_interp)
+def Spin_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> ComplexFloat4096:
+    return Spin(n, Float4096(0), Omega, base, prime_interp)
 
-def Coil_n(x: Float4096, n: int) -> ComplexFloat4096:
-    return apply_operator(Coil, x, n)
+def Splice_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> ComplexFloat4096:
+    return Splice(n, Float4096(0), Omega, base, prime_interp)
 
-def Spin_n(x: Float4096, n: int, s, prime_interp) -> ComplexFloat4096:
-    return apply_operator(Spin, x, n, s, prime_interp)
+def Reflect_n(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> ComplexFloat4096:
+    return Reflect(n, Float4096(0), Omega, base, prime_interp)
 
-def Splice_n(x: Float4096, n: int, s, prime_interp) -> ComplexFloat4096:
-    return apply_operator(Splice, x, n, s, prime_interp)
+def recursive_time(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return T(n, Omega, base, prime_interp)
 
-def Reflect_n(x: Float4096, n: int, s, prime_interp) -> ComplexFloat4096:
-    return apply_operator(Reflect, x, n, s, prime_interp)
+def frequency(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return Float4096(1) / recursive_time(n, Omega, base, prime_interp)
 
-def recursive_time(n: Float4096) -> Float4096:
-    return pow_f4096(phi, -n)
+def charge(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return sqrt(D_n(n, Omega, base, prime_interp))
 
-def frequency(n: Float4096) -> Float4096:
-    return Float4096(1) / recursive_time(n)
+def field_yield(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return E_n(n, Omega, base, prime_interp)
 
-def charge(n: Float4096) -> Float4096:
-    return pow_f4096(recursive_time(n), 3)
+def action(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return D_n(n, Omega, base, prime_interp) * T(n, Omega, base, prime_interp)
 
-def field_yield(n: Float4096, m_val: Float4096) -> Float4096:
-    return pow_f4096(m_val, 2) / pow_f4096(recursive_time(n), 7)
+def energy(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return field_yield(n, Omega, base, prime_interp)
 
-def action(n: Float4096, m_val: Float4096) -> Float4096:
-    return field_yield(n, m_val) * pow_f4096(charge(n), 2)
+def force(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return field_yield(n, Omega, base, prime_interp) / T(n, Omega, base, prime_interp)
 
-def energy(n: Float4096, m_val: Float4096) -> Float4096:
-    return action(n, m_val) * frequency(n)
+def voltage(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return charge(n, Omega, base, prime_interp) / T(n, Omega, base, prime_interp)
 
-def force(n: Float4096, m_val: Float4096) -> Float4096:
-    return energy(n, m_val) / m_val
-
-def voltage(n: Float4096, m_val: Float4096) -> Float4096:
-    return energy(n, m_val) / charge(n)
-
-def labeled_output(n: Float4096, m_val: Float4096) -> Dict[str, Float4096]:
+def labeled_output(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Dict[str, Float4096]:
     return {
-        "Hz": frequency(n),
-        "Time s": recursive_time(n),
-        "Charge C": charge(n),
-        "Yield Ω": field_yield(n, m_val),
-        "Action h": action(n, m_val),
-        "Energy E": energy(n, m_val),
-        "Force F": force(n, m_val),
-        "Voltage V": voltage(n, m_val),
+        "D_n": D_n(n, Omega, base, prime_interp),
+        "T": T(n, Omega, base, prime_interp),
+        "Xi_n": Xi_n(n, Omega, base, prime_interp),
+        "psi_9": psi_9(n, Omega, base, prime_interp),
+        "E_n": E_n(n, Omega, base, prime_interp),
+        "charge": charge(n, Omega, base, prime_interp),
+        "field_yield": field_yield(n, Omega, base, prime_interp),
+        "action": action(n, Omega, base, prime_interp),
+        "energy": energy(n, Omega, base, prime_interp),
+        "force": force(n, Omega, base, prime_interp),
+        "voltage": voltage(n, Omega, base, prime_interp),
     }
+
+def field_automorphisms(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> List[ComplexFloat4096]:
+    return [
+        Coil_n(n, Omega, base, prime_interp),
+        Spin_n(n, Omega, base, prime_interp),
+        Splice_n(n, Omega, base, prime_interp),
+        Reflect_n(n, Omega, base, prime_interp),
+    ]
+
+def field_tension(n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> Float4096:
+    return grad9_r_n(n, Omega, base, prime_interp)
 
 class GoldenClassField:
-    def __init__(self, s_list: List, x_list: List[Float4096], prime_interp):
-        self.s_list = [sp.sympify(s) for s in s_list]
-        self.x_list = [Float4096(x) for x in x_list]
-        self.prime_interp = prime_interp
-        self.field_generators = []
-        self.field_names = []
-        self.field_cache = {}
-        self.construct_class_field()
+    def __init__(self, s: List[Rational], x: Union[List[Float4096], Float4096Array], Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None):
+        self.s = s if isinstance(s, list) else [s]
+        self.x = Float4096Array(x) if not isinstance(x, Float4096Array) else x
+        self.Omega = Float4096(Omega)
+        self.base = Float4096(base)
+        self.prime_interp = prime_interp or prepare_prime_interpolation()
+        self.field_dict = {}
+        self._compute_field()
 
-    def construct_class_field(self):
-        for s in self.s_list:
-            for x in self.x_list:
-                key = (str(s), float(x))
-                if key not in self.field_cache:
-                    self.field_cache[key] = F_x(x, s, self.prime_interp)
-                self.field_generators.append(self.field_cache[key])
-                self.field_names.append(f"F_{float(x):.4f}_s_{s}")
+    def _compute_field(self):
+        for s in self.s:
+            for x in self.x:
+                n_beta = Float4096(s) + x
+                r_n = GRAElement(n_beta, self.Omega, self.base, self.prime_interp)
+                self.field_dict[(s, x)] = ComplexFloat4096(r_n._value, Float4096(0))
 
-    def as_dict(self) -> Dict[str, ComplexFloat4096]:
-        return dict(zip(self.field_names, self.field_generators))
-
-    def display(self):
-        for name, val in self.as_dict().items():
-            print(f"{name} = {float(val)}")
-
-    def reciprocity_check(self):
-        print("\nReciprocity Tests: F_x(s) * F_x(1-s)")
-        for s in self.s_list:
-            for x in self.x_list:
-                try:
-                    s_conj = 1 - s
-                    key1 = (str(s), float(x))
-                    key2 = (str(s_conj), float(x))
-                    if key1 not in self.field_cache:
-                        self.field_cache[key1] = F_x(x, s, self.prime_interp)
-                    if key2 not in self.field_cache:
-                        self.field_cache[key2] = F_x(x, s_conj, self.prime_interp)
-                    prod = self.field_cache[key1] * self.field_cache[key2]
-                    print(f"x={float(x):.4f}, s={s}, F_x(s)·F_x(1-s) = {float(prod)}")
-                except Exception as e:
-                    print(f"Failed for x={float(x)}, s={s}: {e}")
-
-def field_automorphisms(F_val: ComplexFloat4096, x_val: Float4096, s, prime_interp) -> Dict[str, ComplexFloat4096]:
-    s = sp.sympify(s)
-    return {
-        "F_x(s)": F_val,
-        "F_x(1-s)": Splice(x_val, s, prime_interp),
-        "F_-x(s)": Reflect(x_val, s, prime_interp),
-        "conjugate(F)": F_val.conjugate(),
-    }
-
-def field_tension(F_val: ComplexFloat4096, C_val, m_val: Float4096, s_val) -> Float4096:
-    return Float4096(float((F_val.abs() * m_val * Float4096(float(s_val))) / (C_val**2)))
-
-# Initialize constants
-phi = Float4096((1 + math.sqrt(5)) / 2)
-sqrt5 = Float4096(math.sqrt(5))
-pi_val = Float4096(math.pi)
-k = Float4096(-1)
-r = Float4096(1)
+    def as_dict(self) -> Dict[Tuple[Rational, Float4096], ComplexFloat4096]:
+        return self.field_dict
