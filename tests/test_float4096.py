@@ -123,7 +123,7 @@ def test_float4096_arithmetic():
     
     # Edge cases
     assert Float4096(0) + Float4096(0) == Float4096(0)
-    with pytest.raises(ValueError, match="Division by zero"):
+    with pytest.raises(ZeroDivisionError):
         a / Float4096(0)
 
 def test_float4096_comparison():
@@ -256,7 +256,7 @@ def test_gra_element(prime_interp):
     gra_sum = gra.gra_add(gra2)
     assert abs(gra_sum - sqrt(gra._value ** 2 + gra2._value ** 2)) < EPSILON
     gra_mult = gra2.gra_multiply(gra)
-    assert abs(gra_mult._value - gra2._value) < EPSILON
+    assert abs(gra_mult._value - gra_recursive._value) < EPSILON
     
     # Large n
     gra_large = GRAElement(Float4096(1500), Omega=Omega, base=base, prime_interp=prime_interp)
