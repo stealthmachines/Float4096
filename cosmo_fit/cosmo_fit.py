@@ -92,27 +92,20 @@ CONFIG = {
     'optimization_maxiter': 100,
     'optimization_popsize': 15,
     'slsqp_maxiter': 500,
-    'n_jobs': 4,  # Limit to 4 cores
-    'joblib_timeout': 300,  # Increased timeout
-    'use_tqdm': True,  # Toggle for progress bars
+    'n_jobs': 4,
+    'joblib_timeout': 300,
+    'use_tqdm': True,
 }
+
+# Physical constants
+H0 = Float4096(70.0)  # Hubble constant in km/s/Mpc
+c0_emergent = Float4096(299792458)  # Speed of light in m/s
+lambda_scale = Float4096(1.0)  # Scaling factor for emergent constants
 
 # Set up logging
 logging.basicConfig(
     filename='symbolic_cosmo_fit.log',
     level=logging.INFO,
-බ
-
-System: The response was cut off due to exceeding the maximum token limit. Here's a continuation to address the key points while keeping the response concise and focused on preserving the spirit of the original `float4096.py` and fixing `joblib` and `tqdm` issues in `cosmo_fit.py`.
-
-### Continuation of `cosmo_fit.py`
-
-Below is the continuation of the updated `cosmo_fit.py`, ensuring it works seamlessly with the revised `float4096.py`, addresses `joblib` and `tqdm` issues, and maintains the original design’s focus on high-precision symbolic physics.
-
-<xaiArtifact artifact_id="fa27f026-bb91-40c4-a27e-7d0874d50d75" artifact_version_id="18ae778c-af96-4acd-9b53-9fca2f70f788" title="cosmo_fit.py" contentType="text/python">
-```python
-# Continuation from previous section
-
     format='%(asctime)s - %(levelname)s - %(message)s',
     force=True
 )
@@ -121,7 +114,7 @@ def D(n, beta, r=Float4096(1), k=Float4096(1), Omega=Float4096(1), base=Float409
     try:
         r_n = GRAElement(n + beta, Omega=Omega, base=base, prime_interp=prime_interp)
         val = scale * r_n._value
-        if not val.is_finite() or val <= Float4096(0):
+        if not val.isfinite() or val <= Float4096(0):
             logging.debug(f"D returned non-finite or non-positive value for n={n}, beta={beta}")
             return Float4096("1e-30")
         return val * (r ** k)
@@ -151,6 +144,23 @@ def parse_categorized_codata(filename):
         logging.error(f"Error parsing {filename}: {e}")
         raise
 
+def parse_supernova_data(filename):
+    try:
+        df = pd.read_csv(filename, sep='\t', comment='#')
+        required_columns = ['z', 'mu', 'mu_err']
+        if not all(col in df.columns for col in required_columns):
+            missing = [col for col in required_columns if col not in df.columns]
+            raise ValueError(f"Missing required columns in {filename}: {missing}")
+        df = df[df['mu'].notnull() & df['mu_err'].notnull() & (df['mu_err'] > 0)]
+        logging.info(f"Parsed {len(df)} valid supernova data points from {filename}")
+        return df
+    except FileNotFoundError:
+        logging.error(f"Supernova file {filename} not found")
+        raise
+    except Exception as e:
+        logging.error(f"Error parsing {filename}: {e}")
+        raise
+
 def generate_emergent_constants(n_max, beta_steps, r_values, k_values, Omega, base, scale, prime_interp=None):
     candidates = []
     n_values = linspace(Float4096(0), Float4096(n_max), 500)
@@ -161,9 +171,8 @@ def generate_emergent_constants(n_max, beta_steps, r_values, k_values, Omega, ba
     base = Float4096(base)
     scale = Float4096(scale)
     
-    # Use GoldenClassField for field-theoretic constants
     s_list = [sp.Rational(i, beta_steps) for i in range(1, beta_steps + 1)]
-    x_list = n_values[:10]  # Limit for performance
+    x_list = n_values[:10]
     field = GoldenClassField(s_list, x_list, prime_interp=prime_interp)
     field_dict = field.as_dict()
     
@@ -172,34 +181,31 @@ def generate_emergent_constants(n_max, beta_steps, r_values, k_values, Omega, ba
         for beta in beta_values:
             for r in r_values:
                 for k in k_values:
-                    # Direct D computation
                     val = D(n, beta, r, k, Omega, base, scale, prime_interp=prime_interp)
-                    if val.is_finite():
+                    if val.isfinite():
                         candidates.append({
                             'n': float(n), 'beta': float(beta), 'value': float(val),
                             'r': float(r), 'k': float(k), 'scale': float(scale)
                         })
-                    # Inverse via invert_D
                     n_est, beta_est, scale_est, _, r_est, k_est = invert_D(val, prime_interp=prime_interp)
                     if n_est is not None:
                         val_inv = D(n_est, beta_est, r_est, k_est, Omega, base, scale_est, prime_interp=prime_interp)
-                        if val_inv.is_finite():
+                        if val_inv.isfinite():
                             candidates.append({
                                 'n': float(n_est), 'beta': float(beta_est), 'value': float(val_inv),
                                 'r': float(r_est), 'k': float(k_est), 'scale': float(scale_est)
                             })
-                    # Meta-operator enhancements
                     for op in [Spin, Splice]:
                         val_op = op(n, sp.Rational(1, 2), prime_interp=prime_interp)
                         if isinstance(val_op, ComplexFloat4096):
                             val_op = val_op.abs()
-                        if val_op.is_finite():
+                        if val_op.isfinite():
                             candidates.append({
                                 'n': float(n), 'beta': float(beta), 'value': float(val_op),
                                 'r': float(r), 'k': float(k), 'scale': float(scale), 'source': op.__name__
                             })
     for (s, x), val in field_dict.items():
-        if val.abs().is_finite():
+        if val.abs().isfinite():
             candidates.append({
                 'n': float(x), 'beta': float(sp.Rational(s)), 'value': float(val.abs()),
                 'r': float(r_values[0]), 'k': float(k_values[0]), 'scale': float(scale), 'source': 'GoldenClassField'
@@ -417,7 +423,6 @@ def symbolic_fit_all_constants(df, base, Omega, r, k, scale, batch_size, prime_i
                 logging.error(f"Failed to save batch {start//batch_size + 1} to {output_file}: {e}")
         except Exception as e:
             logging.error(f"Parallel processing failed for batch {start//batch_size + 1}: {e}")
-            # Fallback to serial processing
             batch_results = [process_constant(row, r, k, Omega, base, scale, prime_interp) for row in batch.to_dict('records')]
             batch_results = [r for r in batch_results if r is not None]
             results.extend(batch_results)
@@ -496,11 +501,11 @@ def H(z, k, r0, Omega0, s0, alpha, beta):
     Om_m = Float4096("0.3")
     Om_de = Float4096("0.7")
     Gz = G(z, k, r0, Omega0, s0, alpha, beta)
-    Hz_sq = (Float4096(H0) ** Float4096(2)) * (Om_m * Gz * (Float4096(1) + z) ** Float4096(3) + Om_de)
+    Hz_sq = (H0 ** Float4096(2)) * (Om_m * Gz * (Float4096(1) + z) ** Float4096(3) + Om_de)
     return sqrt(Hz_sq)
 
 def emergent_c(z, Omega0, alpha, gamma):
-    return Float4096(c0_emergent) * (Omega(z, Omega0, alpha) / Omega0) ** gamma * lambda_scale
+    return c0_emergent * (Omega(z, Omega0, alpha) / Omega0) ** gamma * lambda_scale
 
 def compute_luminosity_distance_grid(z_max, params, n=500):
     k, r0, Omega0, s0, alpha, beta, gamma = params
@@ -519,10 +524,22 @@ def model_mu(z_arr, params):
     d_L_vals = Float4096Array([d_L_func(float(z)) for z in z_arr])
     return Float4096(5) * log10(d_L_vals) + Float4096(25)
 
+def supernova_error(params, df_supernova):
+    z_arr = Float4096Array(df_supernova['z'])
+    mu_observed = Float4096Array(df_supernova['mu'])
+    mu_err = Float4096Array(df_supernova['mu_err'])
+    try:
+        mu_model = model_mu(z_arr, params)
+        chi2 = sum(((mu_model - mu_observed) / mu_err) ** Float4096(2))
+        return float(chi2)
+    except Exception as e:
+        logging.error(f"Supernova error calculation failed: {e}")
+        return float('inf')
+
 def signal_handler(sig, frame):
     print("\nKeyboardInterrupt detected. Saving partial results...")
     logging.info("KeyboardInterrupt detected. Exiting gracefully.")
-    for output_file in ["emergent_constants.txt", "symbolic_fit_results_emergent_fixed.txt", "cosmo_fit_results.txt"]:
+    for output_file in ["emergent_constants.txt", "symbolic_fit_results_emergent_fixed.txt", "symbolic_fit_results.txt", "cosmo_fit_results.txt"]:
         try:
             with open(output_file, 'a', encoding='utf-8') as f:
                 f.flush()
@@ -544,8 +561,8 @@ def main():
     # Stage 1: Parse CODATA
     if not os.path.exists(CONFIG['codata_file']):
         raise FileNotFoundError(f"{CONFIG['codata_file']} not found in the current directory")
-    df = parse_categorized_codata(CONFIG['codata_file'])
-    logging.info(f"Parsed {len(df)} constants")
+    df_codata = parse_categorized_codata(CONFIG['codata_file'])
+    logging.info(f"Parsed {len(df_codata)} constants")
     progress.update(1)
     
     # Stage 2: Generate emergent constants
@@ -554,17 +571,17 @@ def main():
         CONFIG['Omega'], CONFIG['base'], CONFIG['scale'], prime_interp=prime_interp
     )
     matched_df = match_to_codata(
-        emergent_df, df, CONFIG['tolerance'], CONFIG['batch_size'], prime_interp=prime_interp
+        emergent_df, df_codata, CONFIG['tolerance'], CONFIG['batch_size'], prime_interp=prime_interp
     )
     logging.info("Saved emergent constants to emergent_constants.txt")
     progress.update(1)
     
     # Stage 3: Optimize CODATA parameters
-    worst_names = select_worst_names(df, CONFIG['n_select_worst'])
+    worst_names = select_worst_names(df_codata, CONFIG['n_select_worst'])
     print(f"Selected constants for optimization: {worst_names}")
-    subset_df = df[df['name'].isin(worst_names)]
+    subset_df = df_codata[df_codata['name'].isin(worst_names)]
     if subset_df.empty:
-        subset_df = df.head(50)
+        subset_df = df_codata.head(50)
     init_params = [0.5, 0.5, 0.5, 2.0, 0.1]
     try:
         res = differential_evolution(
@@ -590,11 +607,71 @@ def main():
     
     # Stage 4: Fit CODATA constants
     df_results = symbolic_fit_all_constants(
-        df, base=base_opt, Omega=Omega_opt, r=r_opt, k=k_opt, scale=scale_opt,
+        df_codata, base=base_opt, Omega=Omega_opt, r=r_opt, k=k_opt, scale=scale_opt,
         batch_size=CONFIG['batch_size'], prime_interp=prime_interp
     )
     if not df_results.empty:
         with open("symbolic_fit_results.txt", 'w', encoding='utf-8') as f:
             df_results.to_csv(f, sep="\t", index=False)
             f.flush()
-        logging.info(f"Saved CODATA results to symbolic_fit
+        logging.info(f"Saved CODATA results to symbolic_fit_results.txt")
+    progress.update(1)
+    
+    # Stage 5: Fit supernova data
+    if os.path.exists(CONFIG['supernova_file']):
+        df_supernova = parse_supernova_data(CONFIG['supernova_file'])
+        init_params_supernova = [float(r_opt), float(k_opt), float(Omega_opt), 1.0, 3.0, 0.5, 0.5]
+        bounds_supernova = [(1e-10, 100), (1e-10, 100), (1e-10, 100), (1e-10, 10), (1.5, 10), (0.0, 2.0), (0.0, 2.0)]
+        try:
+            res = differential_evolution(
+                supernova_error, bounds_supernova, args=(df_supernova,),
+                maxiter=CONFIG['optimization_maxiter'], popsize=CONFIG['optimization_popsize']
+            )
+            if res.success:
+                res = minimize(
+                    supernova_error, res.x, args=(df_supernova,), bounds=bounds_supernova,
+                    method='SLSQP', options={'maxiter': CONFIG['slsqp_maxiter']}
+                )
+            if res.success:
+                params_opt = res.x
+                print(f"Supernova optimization complete. Found parameters: {params_opt}")
+                df_supernova['mu_model'] = [float(mu) for mu in model_mu(Float4096Array(df_supernova['z']), params_opt)]
+                df_supernova['residuals'] = df_supernova['mu'] - df_supernova['mu_model']
+                with open("cosmo_fit_results.txt", 'w', encoding='utf-8') as f:
+                    df_supernova.to_csv(f, sep="\t", index=False)
+                    f.flush()
+                logging.info(f"Saved supernova results to cosmo_fit_results.txt")
+            else:
+                logging.warning(f"Supernova optimization failed: {res.message}")
+        except Exception as e:
+            logging.error(f"Supernova optimization failed: {e}")
+    else:
+        logging.warning(f"Supernova file {CONFIG['supernova_file']} not found")
+    progress.update(1)
+    
+    # Stage 6: Generate plots
+    try:
+        plt.figure(figsize=(10, 6))
+        if 'df_supernova' in locals() and not df_supernova.empty:
+            plt.errorbar(df_supernova['z'], df_supernova['mu'], yerr=df_supernova['mu_err'], fmt='o', label='Observed')
+            plt.plot(df_supernova['z'], df_supernova['mu_model'], 'r-', label='Model')
+            plt.xlabel('Redshift (z)')
+            plt.ylabel('Distance Modulus (mu)')
+            plt.legend()
+            plt.savefig('supernova_fit.png')
+            plt.close()
+        plt.figure(figsize=(10, 6))
+        plt.hist(df_results['rel_error'].dropna(), bins=50)
+        plt.xlabel('Relative Error')
+        plt.ylabel('Frequency')
+        plt.savefig('rel_error_histogram.png')
+        plt.close()
+        logging.info("Generated plots: supernova_fit.png, rel_error_histogram.png")
+    except Exception as e:
+        logging.error(f"Plot generation failed: {e}")
+    progress.update(1)
+    
+    logging.info(f"Total execution time: {time.time() - start_time:.2f} seconds")
+
+if __name__ == "__main__":
+    main()
