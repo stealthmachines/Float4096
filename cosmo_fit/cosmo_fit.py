@@ -1,4 +1,4 @@
-```python
+# root_folder/cosmo_fit/cosmo_fit.py
 import os
 import signal
 import sys
