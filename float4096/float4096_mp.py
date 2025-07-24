@@ -1,6 +1,6 @@
-# root_folder/float4096/float4096_mp.py
+# float4096/float4096_mp.py
 import mpmath
-from .float4096 import prepare_prime_interpolation, fib_real, native_prime_product, P_nb
+from .float4096_utils import prepare_prime_interpolation, fib_real, native_prime_product, P_nb
 
 # Set precision to about 4096 bits (~1234 decimal digits)
 mpmath.mp.dps = 1234
