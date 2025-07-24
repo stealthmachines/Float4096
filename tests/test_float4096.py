@@ -1,4 +1,4 @@
-# root_folder/tests/test_float4096.py
+# tests/test_float4096.py
 import pytest
 import numpy as np
 import sympy as sp
@@ -6,7 +6,6 @@ import math
 import pickle
 from numbers import Number
 from float4096 import (
-    fib_real,
     Float4096,
     Float4096Array,
     ComplexFloat4096,
@@ -62,14 +61,13 @@ from float4096 import (
     prepare_prime_interpolation,
     native_zeta,
     native_prime_product,
+    fib_real,
     compute_spline_coefficients,
     native_cubic_spline,
     P_nb,
     solve_n_beta_for_prime,
     phi,
     sqrt5,
-    k,
-    r,
     fib_cache,
     cache_set,
 )
