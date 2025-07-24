@@ -224,7 +224,7 @@ pip install git+https://github.com/ZCHGorg/base4096module.git
 - `rm -rf venv` (or `Remove-Item -Recurse -Force venv`): Deletes the virtual environment.
 - `cd .. && rm -rf Float4096` (or `cd ..; Remove-Item -Recurse -Force Float4096`): Moves up one directory and deletes the cloned repository.
 
-## 🧮 Float4096 v9 – Feature Overview
+## 🧮 Float4096 v10 – Feature Overview
 
 All major capabilities of the `Float4096` framework categorized by function. Fully symbolic, precision-native, and physics-aware.
 
@@ -232,7 +232,9 @@ All major capabilities of the `Float4096` framework categorized by function. Ful
 
 # Click the below arrows to expand -
 
-[details="📦 Core Types & Math"]
+<details>
+<summary>📦 Core Types & Math</summary>
+
 | Feature                       | Description                                      | Status |
 |------------------------------|--------------------------------------------------|--------|
 | `Float4096`                  | Arbitrary-precision real (via `mpmath`)         | ✅     |
@@ -240,120 +242,154 @@ All major capabilities of the `Float4096` framework categorized by function. Ful
 | `Float4096Array`             | NumPy-like container with ufunc overrides       | ✅     |
 | High-precision math ops      | `sqrt`, `exp`, `log`, `sin`, `cos`, `pow`, etc. | ✅     |
 | `log10`, `abs`, `max`        | Custom overloads for precision types            | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="🔁 Recursive Structures"]
+<details>
+<summary>🔁 Recursive Structures</summary>
+
 | Feature                      | Description                                          | Status |
 |-----------------------------|------------------------------------------------------|--------|
 | `GRAElement`                | Golden Recursive Algebra number                     | ✅     |
 | `from_recursive()`         | Builds `rₙ` from `rₙ₋₁` using φ, primes, and Fₙ     | ✅     |
 | `gra_add`, `gra_multiply`  | Symbolic recursive composition operations            | ✅     |
 | `GoldenClassField`         | Recursive physical field mapped over `GRAElement`s   | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="🔢 Sequences & Interpolation"]
+<details>
+<summary>🔢 Sequences & Interpolation</summary>
+
 | Feature                    | Description                                            | Status |
 |---------------------------|--------------------------------------------------------|--------|
 | Fibonacci (Binet’s φ form) | Precision Fibonacci with π-correction                 | ✅     |
 | Prime cache                | Cached list of 10,000+ primes                         | ✅     |
 | `P_nb(n)`                 | Interpolated prime value at fractional index           | ✅     |
 | Prime spline interpolation | Smooth `logφ`-based cubic spline estimator            | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="ζ Zeta & Series"]
+<details>
+<summary>ζ Zeta & Series</summary>
+
 | Feature           | Description                                  | Status |
 |------------------|----------------------------------------------|--------|
 | `native_zeta(s)` | Complex ζ(s) series approximation (Euler sum) | ✅     |
 | Zeta caching      | LRU-style memoization for reuse              | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="⚛ Symbolic Physics Dimensions"]
+<details>
+<summary>⚛ Symbolic Physics Dimensions</summary>
+
 | Feature                | Description                                     | Status |
 |------------------------|-------------------------------------------------|--------|
 | `D(n, β, ...)`         | Recursive dimension operator                    | ✅     |
 | `invert_D(...)`        | Root-solve inverse of dimension operator        | ✅     |
 | Physical units         | `action`, `energy`, `charge`, `force`, etc.    | ✅     |
 | Consistency checks     | `ds_squared`, `Gammaₙ`, `grad9_rₙ`, etc.       | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="🌀 Field Automorphisms"]
+<details>
+<summary>🌀 Field Automorphisms</summary>
+
 | Feature        | Description                                | Status |
 |----------------|--------------------------------------------|--------|
 | `Spin`, `Coil` | Symbolic morphisms over recursive fields   | ✅     |
 | `Splice`       | Field blend operator                       | ✅     |
 | `Reflect`      | Dual-state symmetry operator               | ✅     |
 | `field_automorphisms()` | Returns standard field operations | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="⏱ Recursive Time & Frequency"]
+<details>
+<summary>⏱ Recursive Time & Frequency</summary>
+
 | Feature             | Description                           | Status |
 |--------------------|---------------------------------------|--------|
 | `T(n)`, `Xiₙ`       | Recursive time/frequency generators   | ✅     |
 | `recursive_time()` | Converts `n` to harmonic time period  | ✅     |
 | `field_yield`, `field_tension` | Derivative-like behavior maps | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="📈 Interpolation & Spline"]
+<details>
+<summary>📈 Interpolation & Spline</summary>
+
 | Feature                 | Description                               | Status |
 |-------------------------|-------------------------------------------|--------|
 | `native_cubic_spline()` | φ-scaled spline interpolation             | ✅     |
 | `compute_spline_coefficients()` | Calculates cubic coefficients    | ✅     |
 | Spline cache            | LRU-memoized spline evaluations           | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="⚙️ Utilities & Arrays"]
+<details>
+<summary>⚙️ Utilities & Arrays</summary>
+
 | Feature         | Description                        | Status |
 |----------------|------------------------------------|--------|
 | `linspace`, `logspace` | Range generation for Float4096 | ✅     |
 | `mean`, `stddev`       | Array-based statistical ops     | ✅     |
 | FFT support     | Uses `pyfftw` if available, else NumPy | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="💾 Caching & Files"]
+<details>
+<summary>💾 Caching & Files</summary>
+
 | Feature         | Description                                 | Status |
 |----------------|---------------------------------------------|--------|
 | Prime cache     | Disk-cached with fallback generation        | ✅     |
 | Zeta cache      | OrderedDict-based LRU                       | ✅     |
 | Spline & fib cache | Intermediate result memoization          | ✅     |
 | Auto-load/save  | `.pkl` used for `primes_cache`, spline, etc.| ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="🌌 Cosmology & Physics Integration"]
+<details>
+<summary>🌌 Cosmology & Physics Integration</summary>
+
 | Feature              | Description                                  | Status |
 |----------------------|----------------------------------------------|--------|
 | `cosmo_fit.py`       | Cosmological dataset fitting using Float4096 | ✅     |
 | `labeled_output()`   | Dimension-keyed result bundling              | ✅     |
 | Physical constants   | All symbolic units expressed recursively     | ✅     |
-[/details]
+
+</details>
 
 ---
 
-[details="🧪 Dev Readiness"]
+<details>
+<summary>🧪 Dev Readiness</summary>
+
 | Feature         | Description                        | Status |
 |----------------|------------------------------------|--------|
 | Modular layout  | `float4096/` with clear `__init__` | ✅     |
 | Precision split | `float4096_mp.py` for math core    | ✅     |
-[/details]
+
+</details>
 
 # TO DO:
 The Base4096 module has fallen or devolved out of our suite, but we will be bringing it back in. This 4096 character alphabet unlocks loads of fun, when I finally get it to play nice with our suite. It was pulled out due to padding problems which I was too tired at the time to fix, as I am now. And so, I will do it later on. God bless you.
