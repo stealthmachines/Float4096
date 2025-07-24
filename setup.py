@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='float4096',
-    version='0.9.0',
+    version='0.10.0',
     packages=find_packages(include=['float4096', 'float4096.*']),
     install_requires=[
         'numpy>=1.21.0',
