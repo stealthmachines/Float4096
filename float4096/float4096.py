@@ -1,4 +1,4 @@
-# root_folder/float4096/float4096.py
+# float4096/float4096.py
 import math
 from typing import List, Tuple, Union, Dict
 import numpy as np
@@ -11,7 +11,7 @@ import pickle
 import os
 import functools
 
-# Import mpmath-based arithmetic from float4096_mp
+# Import mpmath-based arithmetic and GRAElement from float4096_mp
 from .float4096_mp import (
     Float4096,
     ComplexFloat4096,
@@ -24,65 +24,31 @@ from .float4096_mp import (
     pow_f4096,
 )
 
-# Constants
-BASE = 4096
-DIGITS_PER_NUMBER = 64  # ~768 bits, retained for compatibility with prime cache
+# Import utilities from float4096_utils
+from .float4096_utils import (
+    prepare_prime_interpolation,
+    fib_real,
+    native_prime_product,
+    P_nb,
+    native_cubic_spline,
+    compute_spline_coefficients,
+    phi,
+    sqrt5,
+    pi_val,
+    cache_set,
+    fib_cache,
+    prime_cache,
+    prime_product_cache,
+    spline_cache,
+)
 
-def generate_primes(n):
-    sieve = [True] * (n + 1)
-    sieve[0] = sieve[1] = False
-    for i in range(2, int(np.sqrt(n)) + 1):
-        if sieve[i]:
-            for j in range(i * i, n + 1, i):
-                sieve[j] = False
-    return [i for i in range(n + 1) if sieve[i]]
-
-primes_file = "primes_cache.pkl"
-if os.path.exists(primes_file):
-    with open(primes_file, "rb") as f:
-        PRIMES = pickle.load(f)
-else:
-    PRIMES = generate_primes(104729)[:10000]
-    with open(primes_file, "wb") as f:
-        pickle.dump(PRIMES, f)
-
-phi = None
-sqrt5 = None
+# Symbolic constants
 Omega = sp.Symbol("Ω", positive=True)
 k = None
 r = None
-pi_val = None
 
 # Caches
-MAX_CACHE_SIZE = 10000
-fib_cache = OrderedDict()
-prime_cache = OrderedDict()
 zeta_cache = OrderedDict()
-prime_product_cache = OrderedDict()
-spline_cache = OrderedDict()
-
-def cache_set(cache, key, value):
-    cache[key] = value
-    if len(cache) > MAX_CACHE_SIZE:
-        cache.popitem(last=False)
-
-def prepare_prime_interpolation(primes_list=PRIMES):
-    cache_file = "prime_interp_cache.pkl"
-    if os.path.exists(cache_file):
-        with open(cache_file, "rb") as f:
-            recursive_index_phi = pickle.load(f)
-    else:
-        indices = [float(i + 1) for i in range(len(primes_list))]
-        phi_float = float((1 + math.sqrt(5)) / 2)
-        recursive_index_phi = [math.log(i + 1) / math.log(phi_float) for i in indices]
-        with open(cache_file, "wb") as f:
-            pickle.dump(recursive_index_phi, f)
-    
-    @functools.wraps(native_cubic_spline)
-    def prime_interp(x):
-        return native_cubic_spline(x, recursive_index_phi, primes_list)
-    
-    return prime_interp
 
 # FFT setup
 try:
@@ -92,35 +58,6 @@ try:
 except ImportError:
     FFT = np.fft.fft
     IFFT = np.fft.ifft
-
-def native_prime_product(n: int) -> Float4096:
-    if n < 0 or n > len(PRIMES):
-        raise ValueError(f"n must be between 0 and {len(PRIMES)}")
-    if n in prime_product_cache:
-        return prime_product_cache[n]
-    product = Float4096(1)
-    for p in PRIMES[:n]:
-        product *= Float4096(p)
-    cache_set(prime_product_cache, n, product)
-    return product
-
-def fib_real(n: Float4096) -> Float4096:
-    """Native base4096 Fibonacci using Binet's formula"""
-    n_float = float(n)
-    if n_float > 70:
-        return Float4096(0)
-    if n_float in fib_cache:
-        return fib_cache[n_float]
-    try:
-        term1 = pow_f4096(phi, n) / sqrt5
-        term2 = pow_f4096(Float4096(1) / phi, n) * cos(pi_val * n)
-        result = term1 - term2
-        if not result.isfinite():
-            result = Float4096(0)
-        cache_set(fib_cache, n_float, result)
-        return result
-    except Exception:
-        return Float4096(0)
 
 def native_zeta(s: complex, max_terms: int = 500) -> ComplexFloat4096:
     """Approximate zeta function with mpmath precision"""
@@ -149,55 +86,6 @@ def native_zeta(s: complex, max_terms: int = 500) -> ComplexFloat4096:
             break
     result = ComplexFloat4096(real_sum, imag_sum)
     cache_set(zeta_cache, s_key, result)
-    return result
-
-def compute_spline_coefficients(x_points: List[float], y_points: List[float]) -> Tuple[List[float], List[float], List[float], List[float]]:
-    """Compute cubic spline coefficients (a, b, c, d) for each segment"""
-    n = len(x_points) - 1
-    h = [x_points[i + 1] - x_points[i] for i in range(n)]
-    a = y_points[:-1]
-    c = [0.0] * (n + 1)
-    alpha = [0.0] * n
-    for i in range(1, n):
-        alpha[i] = 3 * ((y_points[i + 1] - y_points[i]) / h[i] - (y_points[i] - y_points[i - 1]) / h[i - 1])
-    l = [1.0] * (n + 1)
-    mu = [0.0] * n
-    z = [0.0] * (n + 1)
-    for i in range(1, n):
-        l[i] = 2 * (x_points[i + 1] - x_points[i - 1]) - h[i - 1] * mu[i - 1]
-        mu[i] = h[i] / l[i]
-        z[i] = (alpha[i] - h[i - 1] * z[i - 1]) / l[i]
-    b = [0.0] * n
-    d = [0.0] * n
-    for i in range(n - 1, -1, -1):
-        c[i] = z[i] - mu[i] * c[i + 1]
-        b[i] = (y_points[i + 1] - y_points[i]) / h[i] - h[i] * (c[i + 1] + 2 * c[i]) / 3
-        d[i] = (c[i + 1] - c[i]) / (3 * h[i])
-    return a, b, c, d
-
-def native_cubic_spline(x: float, x_points: List[float], y_points: List[float]) -> float:
-    """Full cubic spline interpolation"""
-    x_key = (x, tuple(x_points))
-    if x_key in spline_cache:
-        return float(spline_cache[x_key])
-    n = len(x_points) - 1
-    a, b, c, d = compute_spline_coefficients(x_points, y_points)
-    for i in range(n):
-        if x_points[i] <= x <= x_points[i + 1]:
-            t = x - x_points[i]
-            result = a[i] + b[i] * t + c[i] * t**2 + d[i] * t**3
-            cache_set(spline_cache, x_key, Float4096(result))
-            return result
-    result = y_points[-1] if x > x_points[-1] else y_points[0]
-    cache_set(spline_cache, x_key, Float4096(result))
-    return result
-
-def P_nb(n_beta: Float4096, prime_interp) -> Float4096:
-    n_float = float(n_beta)
-    if n_float in prime_cache:
-        return prime_cache[n_float]
-    result = Float4096(prime_interp(n_float))
-    cache_set(prime_cache, n_float, result)
     return result
 
 def solve_n_beta_for_prime(p_target: int, prime_interp, bracket=(0.1, 20)) -> Float4096:
@@ -277,74 +165,8 @@ class Float4096Array:
     def __str__(self) -> str:
         return f"Float4096Array({[float(x) for x in self._data]})"
 
-class GRAElement:
-    def __init__(self, n: Float4096, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None):
-        if float(n) < 1:
-            raise ValueError("n must be >= 1")
-        self.n = Float4096(n)
-        self.Omega = Float4096(Omega)
-        self.base = Float4096(base)
-        self.prime_interp = prime_interp or prepare_prime_interpolation()
-        self._value = self._compute_r_n()
-
-    def _compute_r_n(self) -> Float4096:
-        try:
-            if float(self.n) > 1000:
-                return Float4096(0)
-            n_int = int(float(self.n))
-            Fn = fib_real(self.n)
-            if Fn == Float4096(0):
-                return Float4096(0)
-            product = native_prime_product(n_int)
-            val = phi * self.Omega * Fn * pow_f4096(self.base, self.n) * product
-            return sqrt(val) if val.isfinite() and val > Float4096(0) else Float4096(0)
-        except Exception:
-            return Float4096(0)
-
-    @classmethod
-    def from_recursive(cls, n: Float4096, prev_r_n_minus_1: 'GRAElement' = None, Omega: Float4096 = Float4096(1), base: Float4096 = Float4096(2), prime_interp=None) -> 'GRAElement':
-        n = Float4096(n)
-        if float(n) < 1:
-            raise ValueError("n must be >= 1")
-        if float(n) == 1:
-            return cls(n, Omega, base, prime_interp)
-        if prev_r_n_minus_1 is None:
-            prev_r_n_minus_1 = cls(n - Float4096(1), Omega, base, prime_interp)
-        Fn = fib_real(n)
-        Fn_minus_1 = fib_real(n - Float4096(1))
-        if Fn == Float4096(0) or Fn_minus_1 == Float4096(0):
-            return cls(n, Omega, base, prime_interp)
-        p_n = P_nb(n, prime_interp or prepare_prime_interpolation())
-        factor = sqrt(Float4096(2) * p_n * (Fn / Fn_minus_1))
-        r_n = prev_r_n_minus_1._value * factor
-        result = cls(n, Omega, base, prime_interp)
-        result._value = r_n if r_n.isfinite() and r_n > Float4096(0) else result._value
-        return result
-
-    def gra_multiply(self, other: 'GRAElement') -> 'GRAElement':
-        if not isinstance(other, GRAElement):
-            raise ValueError("GRA multiplication requires a GRAElement")
-        if float(self.n) != float(other.n) + 1:
-            raise ValueError("GRA multiplication requires n = m + 1")
-        return GRAElement.from_recursive(self.n, prev_r_n_minus_1=other, Omega=self.Omega, base=self.base, prime_interp=self.prime_interp)
-
-    def gra_add(self, other: 'GRAElement') -> Float4096:
-        if not isinstance(other, GRAElement):
-            raise ValueError("GRA addition requires a GRAElement")
-        result = sqrt(self._value ** Float4096(2) + other._value ** Float4096(2))
-        return result if result.isfinite() else Float4096(0)
-
-    def __float__(self) -> float:
-        return float(self._value)
-
-    def __str__(self) -> str:
-        return f"GRAElement({float(self._value)})"
-
 def log10(x: Float4096) -> Float4096:
     return log(x) / log(Float4096(10))
-
-def pi_val() -> Float4096:
-    return Float4096(math.pi)
 
 def linspace(start: Float4096, stop: Float4096, num: int) -> Float4096Array:
     start, stop = Float4096(start), Float4096(stop)
